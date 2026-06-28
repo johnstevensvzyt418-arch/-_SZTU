@@ -1,0 +1,29 @@
+@startuml
+class ElevatorMessage {
+    +LOGGER:Logger
+    +doorFlag:boolean
+    +timeQueue :Queue<String>
+    +dirtQueue :Queue<String>
+    +floorQueue:Queue<String>
+    +CalendarTime:Queue<Calendar>
+    +deviceId  :String
+    +elevatorStatus:String
+    +doorStatus :String
+    +targetFloor:String
+    +currentFloor:String
+    +direction:String
+    +passenger :String
+    +speed:double
+    +alarm    :String
+    +beginTime:long
+    +runtime:String
+    +distance:int
+    +times:int
+    +levelSeq:String
+    -boolean isDirectionChange()
+    -boolean isFloorChange()
+    -boolean isUpOrDownToLevel()
+    -void calculateSpeed()
+    -void updateFloorAndDirectionAndTime(String time)
+}
+@enduml

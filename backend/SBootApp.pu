@@ -1,0 +1,7 @@
+@startuml
+class ElevatorMonitorApplication{
+
+	-public static void main(String[] args)
+	-public RestTemplate getRestTemplate()
+}
+@enduml

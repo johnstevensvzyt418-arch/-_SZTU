@@ -1,0 +1,141 @@
+package cn.edu.sztu.elevatormonitor.services;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Map;
+
+/**
+ * 基于 Redis 的有状态平层超时检测服务。
+ *
+ * <h3>问题背景</h3>
+ * <p>原有 {@code ElevatorMessage.setMalfunction()} 中的平层超时检测依赖实例字段
+ * {@code isRecorded} 和 {@code levelingTime}，每次 HTTP 请求新建对象导致状态丢失，
+ * 无法跨请求触发 ALARM_FIELD 告警。</p>
+ *
+ * <h3>触发逻辑</h3>
+ * <ol>
+ *   <li>门状态为"开门到位"(01) 且 当前楼层==目标楼层 → 判定为平层开门状态</li>
+ *   <li>开始计时，若该状态持续超过阈值秒数 → 返回告警标识 "LEVELING_TIMEOUT"</li>
+ *   <li>门关闭(00) 或 楼层≠目标 → 重置计时器</li>
+ * </ol>
+ *
+ * <h3>Redis 数据结构</h3>
+ * <pre>
+ *   HSET elevator:leveling:{deviceId}
+ *     recorded  → "1" / "0"
+ *     startSec  → epoch秒数
+ * </pre>
+ *
+ * @author bugfix
+ * @since 0.1.5
+ */
+@Service
+public class LevelingTrackingService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LevelingTrackingService.class);
+
+    /** 平层超时阈值（秒），可通过配置文件覆盖 */
+    @Value("${alarm.leveling.timeout-seconds:30}")
+    private int timeoutSeconds;
+
+    /** Redis Hash 键名前缀 */
+    private static final String HASH_PREFIX = "elevator:leveling:";
+
+    /** 告警代码 */
+    public static final String ALARM_LEVELING_TIMEOUT = "LEVELING_TIMEOUT";
+
+    private final StringRedisTemplate stringRedisTemplate;
+
+    public LevelingTrackingService(StringRedisTemplate stringRedisTemplate) {
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
+
+    /**
+     * 检测平层开门超时，返回告警标识。
+     *
+     * @param deviceId     设备ID
+     * @param currentFloor 当前楼层（如 "01", "02"）
+     * @param targetFloor  目标楼层（如 "01", "无"）
+     * @param doorStatus   门状态: "00"=关门, "01"=开门到位
+     * @return 告警标识字符串，无告警返回 null
+     */
+    public String checkLevelingTimeout(String deviceId, String currentFloor,
+                                        String targetFloor, String doorStatus) {
+        if (deviceId == null || currentFloor == null || doorStatus == null) {
+            return null;
+        }
+
+        String hashKey = HASH_PREFIX + deviceId;
+        boolean isDoorOpen = "01".equals(doorStatus);
+
+        // 数值化比较楼层，兼容 "01" 与 "1" 等格式差异
+        boolean isLeveling = floorEquals(currentFloor, targetFloor);
+
+        // 条件不满足 → 重置状态
+        if (!isDoorOpen || !isLeveling) {
+            resetState(hashKey);
+            return null;
+        }
+
+        // 开门 + 平层 → 检查/启动计时
+        Map<Object, Object> state = stringRedisTemplate.opsForHash().entries(hashKey);
+        String recorded = state != null ? (String) state.get("recorded") : null;
+        String startSecStr = state != null ? (String) state.get("startSec") : null;
+
+        long nowSec = Instant.now().getEpochSecond();
+
+        if (!"1".equals(recorded) || startSecStr == null) {
+            // 首次进入平层开门状态 → 开始计时
+            stringRedisTemplate.opsForHash().put(hashKey, "recorded", "1");
+            stringRedisTemplate.opsForHash().put(hashKey, "startSec", String.valueOf(nowSec));
+            LOGGER.info("[Leveling] 设备 {} 进入平层开门状态, 开始计时 (阈值={}s), floor={}",
+                    deviceId, timeoutSeconds, currentFloor);
+            return null;
+        }
+
+        // 已记录 → 检查是否超时
+        long startSec;
+        try {
+            startSec = Long.parseLong(startSecStr);
+        } catch (NumberFormatException e) {
+            resetState(hashKey);
+            return null;
+        }
+
+        long elapsed = nowSec - startSec;
+        if (elapsed >= timeoutSeconds) {
+            LOGGER.warn("[Leveling] 设备 {} 平层开门超时! 已持续{}s > 阈值{}s, floor={}",
+                    deviceId, elapsed, timeoutSeconds, currentFloor);
+            // 超时后重置，避免重复告警（冷却期内由 AlarmRuleEngine 控制）
+            resetState(hashKey);
+            return ALARM_LEVELING_TIMEOUT;
+        }
+
+        LOGGER.debug("[Leveling] 设备 {} 平层开门中, 已持续{}s/{}s, floor={}",
+                deviceId, elapsed, timeoutSeconds, currentFloor);
+        return null;
+    }
+
+    /**
+     * 数值化比较两个楼层值，兼容 "01" 与 "1" 等前导零差异。
+     */
+    private boolean floorEquals(String f1, String f2) {
+        if (f1 == null || f2 == null) return false;
+        try {
+            return Integer.parseInt(f1) == Integer.parseInt(f2);
+        } catch (NumberFormatException e) {
+            // 非数字楼层（如 "无", "B1"）退化为字符串比较
+            return f1.equals(f2);
+        }
+    }
+
+    private void resetState(String hashKey) {
+        stringRedisTemplate.opsForHash().put(hashKey, "recorded", "0");
+        stringRedisTemplate.opsForHash().put(hashKey, "startSec", "0");
+    }
+}

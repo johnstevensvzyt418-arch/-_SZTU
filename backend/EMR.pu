@@ -1,0 +1,8 @@
+@startuml
+class ElevatorMessageRepository {
++LOGGER:Logger
++restTemplate:RestTemplate
++ElevatorMessageRepository(RestTemplate restTemplate)
++boolean sendToFrontEnd(ElevatorMessage elevatorMessage, String apiUrl)
+}
+@enduml

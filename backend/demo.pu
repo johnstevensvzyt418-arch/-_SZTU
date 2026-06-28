@@ -1,0 +1,15 @@
+@startuml
+interface ElevatorService {
+  +int uploadData(String data,String time ,String elevatorID);
+}
+class DataService implements ElevatorService
+{
+    -LOGGER:Logger
+    -ServiceApi:String
+    -elevatorMessageRepository:ElevatorMessageRepository
+    -elevatorMessage:ElevatorMessage
+    +Service(ElevatorMessageRepository elevatorMessageRepository)
+    +int uploadData(String data,String time ,String elevatorID)
+
+}
+@enduml

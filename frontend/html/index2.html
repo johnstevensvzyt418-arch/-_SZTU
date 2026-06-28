@@ -1,0 +1,325 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>电梯状态监控页面</title>
+        <link rel="stylesheet" type="text/css" href="static/css/main.css">
+    </head>
+    <body>
+        <div class="card">
+            <div class="card-title b-light b-b">
+                <div class="font-thin h5">
+                    电梯ID：<span id="device">获取中</span>
+                </div>
+				<div class="font-thin h5">
+                    电梯运行时间：<span id="runtime">获取中</span>
+                </div>
+                <div class="font-thin h5">
+                    最后更新时间：<span id="lastUpdateTime">正在获取数据中</span>
+                </div>
+            </div>
+            <div class="card-main">
+                <div class="card-main-harf b-light b-r">
+                    <div class="card-floor-show">
+                        <div class="card-floor-show-floortext">
+                            <span style="width:10px;" id="direction">-</span> <span id="floor">00</span>
+                        </div>
+                        <div class="card-floor-show-tofloortext">
+                            目标层：<span id="toFloor">00</span>
+                        </div>
+                    </div>
+                    <div class="card-floor-info b-light b-t">
+                        <div class="card-floor-info-card b-light b-r">
+                            <span class="card-floor-info-card-title">状态</span>
+                            <div class="font-thin h2"><span id="status-text">获取中</span></div>
+                        </div>
+                        <div class="card-floor-info-card">
+                            <span class="card-floor-info-card-title">厢门</span>
+                            <div class="font-thin h2"><span id="door">获取中</span></div>
+                        </div>
+                    </div>
+                    <div class="card-floor-info b-light b-t">
+                        <div class="card-floor-info-card b-light b-r">
+                            <span class="card-floor-info-card-title">运行次数</span>
+                            <div class="font-thin h2"><span id="times">获取中</span></div>
+                        </div>
+                        <div class="card-floor-info-card">
+                            <span class="card-floor-info-card-title">运行里程</span>
+                            <div class="font-thin h2"><span id="distance">获取中</span></div>
+                        </div>
+                    </div>
+                    <div class="card-floor-info b-light b-t b-b">
+                        <div class="card-floor-info-card b-light b-r">
+                            <span class="card-floor-info-card-title">乘客</span>
+                            <div class="font-thin h2"><span id="passenger">获取中</span></div>
+                        </div>
+                        <div class="card-floor-info-card">
+                            <span class="card-floor-info-card-title">速度</span>
+                            <div class="font-thin h2"><span id="speed">获取中</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-main-harf">
+                    <ul class="list-group list-group-lg m-b-none">
+                        <li class="list-group-item font-thin" id="alarm_00">
+                            <span class="list-group-item-status" id="alarm_00_text">○</span>
+                            <span class="list-group-item-text">困人</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_01">
+                            <span class="list-group-item-status" id="alarm_01_text">○</span>
+                            <span class="list-group-item-text">超速运行</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_02">
+                            <span class="list-group-item-status" id="alarm_02_text">○</span>
+                            <span class="list-group-item-text">挡板上移</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_03">
+                            <span class="list-group-item-status" id="alarm_03_text">○</span>
+                            <span class="list-group-item-text">挡板下移</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_04">
+                            <span class="list-group-item-status" id="alarm_04_text">○</span>
+                            <span class="list-group-item-text">蹲底</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_05">
+                            <span class="list-group-item-status" id="alarm_05_text">○</span>
+                            <span class="list-group-item-text">关门超时</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_06">
+                            <span class="list-group-item-status" id="alarm_06_text">○</span>
+                            <span class="list-group-item-text">开门载人运行</span>
+                        </li>
+                        <li class="list-group-item font-thin" id="alarm_07">
+                            <span class="list-group-item-status" id="alarm_07_text">○</span>
+                            <span class="list-group-item-text">检修状态</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </body>
+
+    <script>
+        var host = location.host;
+        var wsUrl = 'ws://' + host + '/ws';
+        var reconnectDelay = 2000;  // 断线后 2 秒重连
+        var maxReconnectDelay = 30000; // 最大重连间隔 30 秒
+        var c = null;
+
+        // DOM 元素引用
+        var device = document.getElementById("device");
+        var lastUpdateTime = document.getElementById("lastUpdateTime");
+        var floor = document.getElementById("floor");
+        var toFloor = document.getElementById("toFloor");
+        var direction = document.getElementById("direction");
+        var door = document.getElementById("door");
+        var status_text = document.getElementById("status-text");
+        var passenger = document.getElementById("passenger");
+        var speed = document.getElementById("speed");
+        var distance = document.getElementById("distance");
+        var times = document.getElementById("times");
+        var runtime = document.getElementById("runtime");
+
+        // 告警编码 → 索引映射（与后端 alarm_event 一致）
+        var ALARM_MAP = {
+            "00": 0,  // 困人
+            "01": 1,  // 超速运行
+            "02": 2,  // 挡板上移
+            "03": 3,  // 挡板下移
+            "04": 4,  // 蹲底
+            "05": 5,  // 关门超时
+            "06": 6,  // 开门载人运行
+            "07": 7   // 检修状态
+        };
+
+        // ========== WebSocket 连接（含自动重连） ==========
+        function connectWebSocket() {
+            if (c != null) {
+                try { c.close(); } catch(e) {}
+            }
+            c = new WebSocket(wsUrl);
+
+            c.onopen = function() {
+                status_text.innerHTML = "已连接";
+                lastUpdateTime.innerHTML = dateFtt("yyyy-MM-dd hh:mm:ss", new Date());
+                reconnectDelay = 2000; // 重置重连间隔
+                console.log("[WS] 已连接到 " + wsUrl);
+            };
+
+            c.onmessage = function(msg) {
+                try {
+                    var obj = JSON.parse(msg.data);
+                    updateDisplay(obj);
+                } catch(e) {
+                    console.error("[WS] JSON解析失败:", e);
+                }
+            };
+
+            c.onclose = function(evt) {
+                status_text.innerHTML = "连接断开(" + evt.code + ")，重连中...";
+                console.warn("[WS] 连接关闭, code=" + evt.code + ", " + reconnectDelay + "ms后重连");
+                setTimeout(connectWebSocket, reconnectDelay);
+                // 指数退避，最大30秒
+                reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
+            };
+
+            c.onerror = function(err) {
+                console.error("[WS] 连接错误:", err);
+            };
+        }
+
+        // ========== 显示更新（统一入口） ==========
+        function updateDisplay(obj) {
+            var targetId = GetQueryString("id");
+
+            // 🔧 修复: 如果指定了 ?id= 则过滤，否则显示所有设备数据
+            if (targetId && targetId !== obj.Device) {
+                return;  // 不是目标设备，跳过
+            }
+
+            // 设备ID
+            device.innerHTML = obj.Device || "";
+
+            // 楼层
+            floor.innerHTML = obj.Floor || "00";
+            toFloor.innerHTML = obj.ToFloor || "00";
+
+            // 速度
+            speed.innerHTML = obj.Speed || "";
+
+            // 运行时间
+            runtime.innerHTML = obj.Runtime || "";
+
+            // 运行里程
+            distance.innerHTML = obj.Distance || "";
+
+            // 运行次数
+            times.innerHTML = obj.Times || "";
+
+            // 状态
+            switch(obj.Status) {
+                case "00": status_text.innerHTML = "正常"; break;
+                case "01": status_text.innerHTML = "异常"; break;
+                case "02": status_text.innerHTML = "未知"; break;
+                default: status_text.innerHTML = obj.Status || "未知"; break;
+            }
+
+            // 方向
+            switch(obj.Direction) {
+                case "00": direction.innerHTML = " "; break;
+                case "01": direction.innerHTML = "▲"; break;
+                case "02": direction.innerHTML = "▼"; break;
+                default: direction.innerHTML = obj.Direction || "-"; break;
+            }
+
+            // 门状态
+            switch(obj.Door) {
+                case "00": door.innerHTML = "关门到位"; break;
+                case "01": door.innerHTML = "开门到位"; break;
+                case "02": door.innerHTML = "关门中"; break;
+                case "03": door.innerHTML = "开门中"; break;
+                default: door.innerHTML = obj.Door || "未知"; break;
+            }
+
+            // 乘客
+            switch(obj.Passenger) {
+                case "00": passenger.innerHTML = "无乘客"; break;
+                case "01": passenger.innerHTML = "有乘客"; break;
+                default: passenger.innerHTML = obj.Passenger || ""; break;
+            }
+
+            // 🔧 修复: 告警匹配——支持数字编码("00"-"07")和字符串("LEVELING_TIMEOUT"等)
+            resetAllAlarms();
+            var alarmStr = obj.Alarm || "";
+            if (alarmStr) {
+                // 先尝试数字编码匹配
+                var matched = false;
+                for (var code in ALARM_MAP) {
+                    if (alarmStr.indexOf(code) > -1) {
+                        setAlarmOn(ALARM_MAP[code]);
+                        matched = true;
+                    }
+                }
+                // 如果没有匹配到数字编码但有告警字符串，尝试语义匹配
+                if (!matched) {
+                    if (alarmStr.indexOf("LEVELING") > -1 || alarmStr.indexOf("TIMEOUT") > -1) {
+                        setAlarmOn(0);  // 平层超时 → 困人告警灯
+                    }
+                    if (alarmStr.indexOf("SPEED") > -1) {
+                        setAlarmOn(1);  // 超速
+                    }
+                    if (alarmStr.indexOf("FLOOR_JUMP") > -1) {
+                        setAlarmOn(0);  // 楼层跳变 → 告警灯
+                    }
+                }
+            }
+
+            // 更新时间
+            lastUpdateTime.innerHTML = dateFtt("yyyy-MM-dd hh:mm:ss", new Date());
+        }
+
+        // 重置所有告警灯
+        function resetAllAlarms() {
+            for (var i = 0; i < 8; i++) {
+                var alarmNum = (i < 10) ? "0" + i : "" + i;
+                var alarm_class = document.getElementById("alarm_" + alarmNum);
+                var alarm_text = document.getElementById("alarm_" + alarmNum + "_text");
+                if (alarm_class) {
+                    alarm_class.className = "list-group-item font-thin";
+                }
+                if (alarm_text) {
+                    alarm_text.innerText = "○";
+                }
+            }
+            // 重置速度高亮
+            if (speed) speed.className = "font-thin h2";
+        }
+
+        // 点亮指定告警灯
+        function setAlarmOn(index) {
+            var alarmNum = (index < 10) ? "0" + index : "" + index;
+            var alarm_class = document.getElementById("alarm_" + alarmNum);
+            var alarm_text = document.getElementById("alarm_" + alarmNum + "_text");
+            if (alarm_class) {
+                alarm_class.className = "list-group-item font-thin list-group-item-alarm";
+            }
+            if (alarm_text) {
+                alarm_text.innerText = "☉";
+            }
+            // 超速告警(索引1)高亮速度字段
+            if (index === 1 && speed) {
+                speed.className = "font-thin h2 list-group-item-alarm";
+            }
+        }
+
+        // ========== 工具函数 ==========
+        function dateFtt(fmt, date) {
+            var o = {
+                "M+" : date.getMonth()+1,
+                "d+" : date.getDate(),
+                "h+" : date.getHours(),
+                "m+" : date.getMinutes(),
+                "s+" : date.getSeconds(),
+                "q+" : Math.floor((date.getMonth()+3)/3),
+                "S"  : date.getMilliseconds()
+            };
+            if(/(y+)/.test(fmt))
+                fmt = fmt.replace(RegExp.$1, (date.getFullYear()+"").substr(4 - RegExp.$1.length));
+            for(var k in o)
+                if(new RegExp("("+ k +")").test(fmt))
+                    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));
+            return fmt;
+        }
+
+        function GetQueryString(name) {
+            var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if(r != null) return unescape(r[2]);
+            return null;
+        }
+
+        // ========== 启动连接 ==========
+        connectWebSocket();
+    </script>
+</html>

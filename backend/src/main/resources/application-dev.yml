@@ -1,0 +1,21 @@
+# ============================================================
+# Elevator Monitor — 开发环境配置
+# 激活方式: --spring.profiles.active=dev
+# ============================================================
+spring:
+  redis:
+    host: 127.0.0.1
+    port: 6379
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/elevator_monitor?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:changeme}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+# 开发环境：缩短平层超时阈值便于测试
+alarm:
+  leveling:
+    timeout-seconds: 10

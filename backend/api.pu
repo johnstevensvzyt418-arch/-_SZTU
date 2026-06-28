@@ -1,0 +1,8 @@
+@startuml
+class MonitorController{
++LOGGER:logger
++Service:DataService
++MonitorController(DataService Service)
++public int uploadData(@RequestParam String data,@RequestParam String time,@RequestParam String elevatorID)
+}
+@enduml

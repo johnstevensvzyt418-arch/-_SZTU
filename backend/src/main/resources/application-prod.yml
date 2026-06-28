@@ -1,0 +1,17 @@
+# ============================================================
+# Elevator Monitor — 生产环境配置
+# 激活方式: --spring.profiles.active=prod
+# ============================================================
+spring:
+  redis:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/elevator_monitor?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false

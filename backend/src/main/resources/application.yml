@@ -1,0 +1,84 @@
+# ============================================================
+# Elevator Monitor — 主配置文件
+# ============================================================
+server:
+  port: 10008
+  shutdown: graceful
+  tomcat:
+    uri-encoding: UTF-8
+
+logging:
+  level:
+    cn.edu.sztu: debug
+
+spring:
+  # HTTP 编码强制 UTF-8（消除中文乱码）
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+  # 生命周期
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # Redis
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    password:
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+        max-wait: 1000ms
+
+  # MySQL
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/elevator_monitor?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:changeme}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+
+elevator:
+  storage:
+    type: mysql
+
+alarm:
+  long-idle:
+    threshold-seconds: 60
+  door-open:
+    threshold-seconds: 20
+  speed:
+    max-mps: 3.0
+  floor-jump:
+    max-diff: 2
+  leveling:
+    timeout-seconds: 30
+  cooldown:
+    default-seconds: 300
+
+push:
+  endpoint:
+    monake: redis://elevator:status
+    xinshida: redis://elevator:status
+    sightseeing: redis://elevator:status
+    mnk: redis://elevator:status
