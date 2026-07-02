@@ -84,14 +84,33 @@ push:
     mnk: redis://elevator:status
 
 # ============================================================
-# MQTT — 嵌入式设备数据接入
+# MQTT — 嵌入式设备数据接入 (远程 EMQX Broker)
+# 按设备接入指南: tcp.sealosbja.site:35205
 # ============================================================
 mqtt:
   broker:
-    url: ${MQTT_BROKER_URL:tcp://127.0.0.1:1883}
+    url: ${MQTT_BROKER_URL:tcp://tcp.sealosbja.site:35205}
   client:
-    id: elevator-monitor-backend
-  topic: elevator/mnk/#
+    id: elevator-monitor-backend-${random.uuid}
+  # 设备上报主题 (设备 → 平台)
+  topic: /Elevator
+  # 命令回执主题 (设备 → 平台)
+  command-up-topic: /elevator/+/command/up
   qos: 1
-  username: ${MQTT_USERNAME:}
-  password: ${MQTT_PASSWORD:}
+  username: ${MQTT_USERNAME:admin}
+  password: ${MQTT_PASSWORD:SZTUbdi@1005}
+
+# ============================================================
+# 云平台接入配置 (SealOS 部署)
+# ============================================================
+platform:
+  # Web 管理后台
+  web-url: ${PLATFORM_WEB_URL:https://aqwtmupbegka.sealosbja.site}
+  # API 基础地址
+  api-base: ${PLATFORM_API_BASE:https://bbjxeudameoz.sealosbja.site/api}
+  # WebSocket 地址
+  ws-url: ${PLATFORM_WS_URL:wss://bbjxeudameoz.sealosbja.site/ws}
+  # 平台认证
+  auth:
+    username: ${PLATFORM_USERNAME:admin}
+    password: ${PLATFORM_PASSWORD:SZTUbdi@1005}

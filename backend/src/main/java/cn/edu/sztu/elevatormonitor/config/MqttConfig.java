@@ -17,18 +17,20 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 /**
- * MQTT 配置 — 接收嵌入式设备通过 MQTT 协议上报的电梯数据。
+ * MQTT 配置 — 连接远程 EMQX Broker，接收嵌入式设备通过 MQTT 协议上报的电梯数据。
  *
  * <h3>架构</h3>
  * <pre>
- *   嵌入式设备 → MQTT Broker → MqttPahoMessageDrivenChannelAdapter
- *       → mqttInputChannel → MqttMessageReceiver (路由到 MNKApplicationService)
+ *   嵌入式设备 → EMQX Broker (tcp.sealosbja.site:35205)
+ *     → MqttPahoMessageDrivenChannelAdapter (订阅 /Elevator)
+ *     → mqttInputChannel → MqttMessageReceiver (路由到 MNKApplicationService)
  * </pre>
  *
- * <h3>Topic 约定</h3>
+ * <h3>Topic 约定 (按设备接入指南)</h3>
  * <pre>
- *   elevator/mnk/data        — MNK 协议数据 (payload = 94字节HEX字符串)
- *   elevator/{deviceId}/data — 按设备ID区分的数据 (可选)
+ *   /Elevator                         — 设备 → 平台: 电梯状态上报(订阅)
+ *   /elevator/{deviceId}/command/up   — 设备 → 平台: 命令回执(订阅)
+ *   /elevator/{deviceId}/command/down — 平台 → 设备: 派梯命令(发布)
  * </pre>
  *
  * @author mqtt-integration
@@ -39,19 +41,24 @@ public class MqttConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MqttConfig.class);
 
-    @Value("${mqtt.broker.url:tcp://127.0.0.1:1883}")
+    @Value("${mqtt.broker.url:tcp://tcp.sealosbja.site:35205}")
     private String brokerUrl;
 
     @Value("${mqtt.client.id:elevator-monitor-backend}")
     private String clientId;
 
-    @Value("${mqtt.topic:elevator/mnk/#}")
+    /** 设备上报主题 (设备→平台): /Elevator */
+    @Value("${mqtt.topic:/Elevator}")
     private String topic;
 
-    @Value("${mqtt.username:}")
+    /** 命令回执主题 (设备→平台), 通配符匹配所有设备 */
+    @Value("${mqtt.command-up-topic:/elevator/+/command/up}")
+    private String commandUpTopic;
+
+    @Value("${mqtt.username:admin}")
     private String username;
 
-    @Value("${mqtt.password:}")
+    @Value("${mqtt.password:SZTUbdi@1005}")
     private String password;
 
     @Value("${mqtt.qos:1}")
@@ -89,14 +96,14 @@ public class MqttConfig {
     }
 
     /**
-     * MQTT 消息驱动适配器 — 订阅 Topic 并将消息路由到 mqttInputChannel。
-     * 实际消息处理由 {@link cn.edu.sztu.elevatormonitor.services.MqttMessageReceiver} 中的
-     * {@code @ServiceActivator(inputChannel = "mqttInputChannel")} 完成。
+     * MQTT 消息驱动适配器 — 订阅设备上报 + 命令回执主题，路由到 mqttInputChannel。
      */
     @Bean
     public MessageProducer mqttInbound() {
+        // 合并订阅: 设备上报 + 命令回执
+        String[] topics = {topic, commandUpTopic};
         MqttPahoMessageDrivenChannelAdapter adapter =
-                new MqttPahoMessageDrivenChannelAdapter(clientId, mqttClientFactory(), topic.split(","));
+                new MqttPahoMessageDrivenChannelAdapter(clientId, mqttClientFactory(), topics);
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(qos);

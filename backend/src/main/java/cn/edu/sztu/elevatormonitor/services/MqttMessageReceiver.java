@@ -3,6 +3,7 @@ package cn.edu.sztu.elevatormonitor.services;
 import cn.edu.sztu.elevatormonitor.application.MNKApplicationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
@@ -14,13 +15,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * MQTT 消息接收服务 — 将嵌入式设备通过 MQTT 上报的 MNK 协议数据
+ * MQTT 消息接收服务 — 将嵌入式设备通过 MQTT 上报的电梯数据
  * 路由到 {@link MNKApplicationService} 统一处理。
  *
- * <h3>MQTT Topic 约定</h3>
+ * <h3>MQTT Topic 约定（按设备接入指南）</h3>
  * <pre>
- *   elevator/mnk/data              → payload = MNK 94字节HEX字符串, deviceId 从报文中提取
- *   elevator/{deviceId}/data       → payload 同上, deviceId 从 topic 提取
+ *   /Elevator                         → payload = MNK 94字节HEX, deviceId 从报文提取
+ *   /elevator/{deviceId}/command/up   → payload = 命令回执JSON, deviceId 从 topic 提取
  * </pre>
  *
  * <h3>处理链路</h3>
@@ -38,16 +39,19 @@ public class MqttMessageReceiver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MqttMessageReceiver.class);
 
-    /** 从 topic 中提取 deviceId 的正则: elevator/{deviceId}/data */
-    private static final Pattern DEVICE_ID_PATTERN = Pattern.compile("elevator/(\\w+)/data");
+    /** 从 topic 中提取 deviceId: /elevator/{deviceId}/command/up */
+    private static final Pattern DEVICE_ID_PATTERN = Pattern.compile("/elevator/(\\w+)/command/up");
 
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final MNKApplicationService mnkApplicationService;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    public MqttMessageReceiver(MNKApplicationService mnkApplicationService) {
+    public MqttMessageReceiver(MNKApplicationService mnkApplicationService,
+                               StringRedisTemplate stringRedisTemplate) {
         this.mnkApplicationService = mnkApplicationService;
-        LOGGER.info("[MQTT-Receiver] 初始化完成, 已注入 MNKApplicationService");
+        this.stringRedisTemplate = stringRedisTemplate;
+        LOGGER.info("[MQTT-Receiver] 初始化完成, 已注入 MNKApplicationService + StringRedisTemplate");
     }
 
     /**
@@ -70,7 +74,13 @@ public class MqttMessageReceiver {
             String payload = new String(payloadBytes, StandardCharsets.UTF_8).trim();
             LOGGER.info("[MQTT-Receiver] 收到MQTT消息: topic={}, len={}", topic, payload.length());
 
-            // ---- 1. 提取 deviceId ----
+            // ---- 路由: 命令回执 vs 设备状态上报 ----
+            if (topic != null && topic.contains("/command/up")) {
+                handleCommandResponse(topic, payload);
+                return;
+            }
+
+            // ---- 设备状态上报 (/Elevator) ----
             String deviceId = extractDeviceId(topic, payload);
             if (deviceId == null || deviceId.isEmpty()) {
                 LOGGER.warn("[MQTT-Receiver] 无法提取deviceId, topic={}", topic);
@@ -78,7 +88,6 @@ public class MqttMessageReceiver {
             }
 
             // ---- 2. 优先从 payload 提取设备时间 (MNK协议 data[1..20] = yyyy/MM/dd HH:mm:ss) ----
-            // 使用设备真实采集时间而非服务器时间，保证速度计算等时间敏感逻辑的准确性
             String reportTime = extractDeviceTime(payload);
 
             // ---- 3. 路由到统一处理管道 ----
@@ -88,6 +97,24 @@ public class MqttMessageReceiver {
 
         } catch (Exception e) {
             LOGGER.error("[MQTT-Receiver] 消息处理异常", e);
+        }
+    }
+
+    /**
+     * 处理设备命令回执 (/elevator/{deviceId}/command/up)。
+     * Payload 格式: {payload:[type, floor, result]}
+     */
+    private void handleCommandResponse(String topic, String payload) {
+        Matcher m = DEVICE_ID_PATTERN.matcher(topic);
+        String deviceId = m.find() ? m.group(1) : "unknown";
+        LOGGER.info("[MQTT-Receiver] 命令回执: deviceId={}, payload={}", deviceId, payload);
+        // TODO: 将命令回执写入 Redis/MySQL，供上层业务查询
+        try {
+            stringRedisTemplate.opsForHash().put("elevator:command_results", deviceId, payload);
+            stringRedisTemplate.convertAndSend("elevator:command_results", 
+                    "{\"deviceId\":\"" + deviceId + "\",\"payload\":" + payload + "}");
+        } catch (Exception e) {
+            LOGGER.error("[MQTT-Receiver] 命令回执保存失败: deviceId={}", deviceId, e);
         }
     }
 
