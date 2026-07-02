@@ -114,7 +114,7 @@ public class SpeedTrackingService {
 
     /**
      * 解析 HH:mm:ss 格式时间为当天 epoch 秒数。
-     * 使用当天日期 + 上报时间组合，避免跨天问题。
+     * 使用当天日期 + 上报时间组合，通过完整 epoch 秒数避免跨天问题。
      */
     private long parseTimeToEpochSeconds(String timeStr) {
         try {
@@ -123,8 +123,13 @@ public class SpeedTrackingService {
             int hours = Integer.parseInt(parts[0]);
             int minutes = Integer.parseInt(parts[1]);
             int seconds = Integer.parseInt(parts[2]);
-            return hours * 3600L + minutes * 60L + seconds;
-        } catch (NumberFormatException e) {
+            // 使用当天日期 + 上报时间 → 完整 epoch 秒，解决跨午夜回绕问题
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.LocalTime time = java.time.LocalTime.of(hours, minutes, seconds);
+            return java.time.LocalDateTime.of(today, time)
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toEpochSecond();
+        } catch (Exception e) {
             LOGGER.warn("[SpeedTrack] 时间解析失败: {}", timeStr);
             return Instant.now().getEpochSecond();
         }

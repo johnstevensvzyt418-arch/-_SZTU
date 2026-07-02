@@ -179,8 +179,13 @@
                 }
                 if (!matched) {
                     if (alarmStr.indexOf("LEVELING") > -1 || alarmStr.indexOf("TIMEOUT") > -1) setAlarmOn(0);
+                    if (alarmStr.indexOf("ALARM_FIELD") > -1) setAlarmOn(0);
                     if (alarmStr.indexOf("SPEED") > -1) setAlarmOn(1);
-                    if (alarmStr.indexOf("FLOOR_JUMP") > -1) setAlarmOn(0);
+                    if (alarmStr.indexOf("FLOOR_JUMP") > -1) setAlarmOn(4);
+                    if (alarmStr.indexOf("DOOR_OPEN") > -1) setAlarmOn(5);
+                    if (alarmStr.indexOf("DIRECTION") > -1) setAlarmOn(2);
+                    if (alarmStr.indexOf("LONG_IDLE") > -1 || alarmStr.indexOf("IDLE") > -1) setAlarmOn(7);
+                    if (alarmStr.indexOf("DEVICE_OFFLINE") > -1 || alarmStr.indexOf("OFFLINE") > -1) setAlarmOn(3);
                 }
             }
 

@@ -82,3 +82,16 @@ push:
     xinshida: redis://elevator:status
     sightseeing: redis://elevator:status
     mnk: redis://elevator:status
+
+# ============================================================
+# MQTT — 嵌入式设备数据接入
+# ============================================================
+mqtt:
+  broker:
+    url: ${MQTT_BROKER_URL:tcp://127.0.0.1:1883}
+  client:
+    id: elevator-monitor-backend
+  topic: elevator/mnk/#
+  qos: 1
+  username: ${MQTT_USERNAME:}
+  password: ${MQTT_PASSWORD:}

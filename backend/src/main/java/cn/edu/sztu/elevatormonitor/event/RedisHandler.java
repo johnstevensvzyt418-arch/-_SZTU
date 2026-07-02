@@ -5,11 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -37,6 +37,9 @@ public class RedisHandler {
 
     /** Redis Pub/Sub 频道名 */
     private static final String CHANNEL_ELEVATOR_STATUS = "elevator:status";
+
+    /** 设备时间戳 Hash 前缀，供 ScheduledAlarmChecker 巡检使用 */
+    private static final String HASH_TIMESTAMPS_PREFIX = "elevator:timestamps:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -68,6 +71,11 @@ public class RedisHandler {
             // 1. HSET — 持久化最新状态，支持按 deviceId 查询
             stringRedisTemplate.opsForHash().put(HASH_KEY_ELEVATOR_STATUS, deviceId, json);
             LOGGER.debug("[RedisHandler] HSET elevator:status {} => OK", deviceId);
+
+            // 1b. 更新最后消息时间戳，供 ScheduledAlarmChecker 巡检设备离线
+            String tsKey = HASH_TIMESTAMPS_PREFIX + deviceId;
+            stringRedisTemplate.opsForHash().put(tsKey, "lastMessageTime",
+                    String.valueOf(Instant.now().getEpochSecond()));
 
             // 2. PUBLISH — 实时推送给 Go WebSocket 订阅者
             stringRedisTemplate.convertAndSend(CHANNEL_ELEVATOR_STATUS, json);

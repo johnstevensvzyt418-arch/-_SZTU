@@ -246,11 +246,26 @@
                     if (alarmStr.indexOf("LEVELING") > -1 || alarmStr.indexOf("TIMEOUT") > -1) {
                         setAlarmOn(0);  // 平层超时 → 困人告警灯
                     }
+                    if (alarmStr.indexOf("ALARM_FIELD") > -1) {
+                        setAlarmOn(0);  // 报警字段异常 → 困人告警灯
+                    }
                     if (alarmStr.indexOf("SPEED") > -1) {
-                        setAlarmOn(1);  // 超速
+                        setAlarmOn(1);  // 超速 → 超速运行告警灯
                     }
                     if (alarmStr.indexOf("FLOOR_JUMP") > -1) {
-                        setAlarmOn(0);  // 楼层跳变 → 告警灯
+                        setAlarmOn(4);  // 楼层跳变 → 蹲底告警灯
+                    }
+                    if (alarmStr.indexOf("DOOR_OPEN") > -1) {
+                        setAlarmOn(5);  // 开门超时 → 关门超时告警灯
+                    }
+                    if (alarmStr.indexOf("DIRECTION") > -1) {
+                        setAlarmOn(2);  // 方向异常 → 挡板上移告警灯
+                    }
+                    if (alarmStr.indexOf("LONG_IDLE") > -1 || alarmStr.indexOf("IDLE") > -1) {
+                        setAlarmOn(7);  // 长时间闲置 → 检修状态告警灯
+                    }
+                    if (alarmStr.indexOf("DEVICE_OFFLINE") > -1 || alarmStr.indexOf("OFFLINE") > -1) {
+                        setAlarmOn(3);  // 设备离线 → 挡板下移告警灯
                     }
                 }
             }

@@ -82,6 +82,17 @@
 			<artifactId>commons-pool2</artifactId>
 		</dependency>
 
+		<!-- MQTT 物联网协议支持 (嵌入式设备数据接入) -->
+		<dependency>
+			<groupId>org.springframework.integration</groupId>
+			<artifactId>spring-integration-mqtt</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.paho</groupId>
+			<artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+			<version>1.2.5</version>
+		</dependency>
+
         <!-- Caffeine 高性能缓存 — 设备状态自动过期回收 -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
