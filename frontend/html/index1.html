@@ -1,238 +1,342 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>电梯状态监控页面</title>
-        <link rel="stylesheet" type="text/css" href="static/css/main.css">
-    </head>
-    <body>
-        <div class="card">
-            <div class="card-title b-light b-b">
-                <div class="font-thin h5">
-                    电梯ID：<span id="device">获取中</span>
-                </div>
-                <div class="font-thin h5">
-                    最后更新时间：<span id="lastUpdateTime">正在获取数据中</span>
-                </div>
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>电梯状态监控页面</title>
+    <link rel="stylesheet" type="text/css" href="static/css/main.css">
+</head>
+
+<body>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <div class="card">
+        <div class="card-title b-light b-b">
+            <div class="font-thin h5">
+                电梯ID：<span id="device">获取中</span>
             </div>
-            <div class="card-main">
-                <div class="card-main-harf b-light b-r">
-                    <div class="card-floor-show">
-                        <div class="card-floor-show-floortext">
-                            <span style="width:10px;" id="direction">-</span> <span id="floor">00</span>
-                        </div>
-                        <div class="card-floor-show-tofloortext">
-                            目标层：<span id="toFloor">00</span>
-                        </div>
-                    </div>
-                    <div class="card-floor-info b-light b-t">
-                        <div class="card-floor-info-card b-light b-r">
-                            <span class="card-floor-info-card-title">状态</span>
-                            <div class="font-thin h2"><span id="status-text">获取中</span></div>
-                        </div>
-                        <div class="card-floor-info-card">
-                            <span class="card-floor-info-card-title">厢门</span>
-                            <div class="font-thin h2"><span id="door">获取中</span></div>
-                        </div>
-                    </div>
-                    <div class="card-floor-info b-light b-t b-b">
-                        <div class="card-floor-info-card b-light b-r">
-                            <span class="card-floor-info-card-title">乘客</span>
-                            <div class="font-thin h2"><span id="passenger">获取中</span></div>
-                        </div>
-                        <div class="card-floor-info-card">
-                            <span class="card-floor-info-card-title">速度</span>
-                            <div class="font-thin h2"><span id="speed">获取中</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-main-harf">
-                    <ul class="list-group list-group-lg m-b-none">
-                        <li class="list-group-item font-thin" id="alarm_00">
-                            <span class="list-group-item-status" id="alarm_00_text">○</span>
-                            <span class="list-group-item-text">困人</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_01">
-                            <span class="list-group-item-status" id="alarm_01_text">○</span>
-                            <span class="list-group-item-text">超速运行</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_02">
-                            <span class="list-group-item-status" id="alarm_02_text">○</span>
-                            <span class="list-group-item-text">挡板上移</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_03">
-                            <span class="list-group-item-status" id="alarm_03_text">○</span>
-                            <span class="list-group-item-text">挡板下移</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_04">
-                            <span class="list-group-item-status" id="alarm_04_text">○</span>
-                            <span class="list-group-item-text">蹲底</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_05">
-                            <span class="list-group-item-status" id="alarm_05_text">○</span>
-                            <span class="list-group-item-text">关门超时</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_06">
-                            <span class="list-group-item-status" id="alarm_06_text">○</span>
-                            <span class="list-group-item-text">开门载人运行</span>
-                        </li>
-                        <li class="list-group-item font-thin" id="alarm_07">
-                            <span class="list-group-item-status" id="alarm_07_text">○</span>
-                            <span class="list-group-item-text">检修状态</span>
-                        </li>
-                    </ul>
-                </div>
+            <div class="font-thin h5">
+                最后更新时间：<span id="lastUpdateTime">正在获取数据中</span>
+            </div>
+            <div class="font-thin h5" style="margin-left:auto;">
+                <span class="status-dot disconnected" id="statusDot"></span>
+                连接状态：<span id="connectionStatus">未连接</span>
             </div>
         </div>
-    </body>
+        <div class="card-main">
+            <div class="card-main-harf b-light b-r">
+                <div class="card-floor-show">
+                    <div class="card-floor-show-floortext">
+                        <span id="direction">-</span> <span id="floor">00</span>
+                    </div>
+                    <div class="card-floor-show-tofloortext">
+                        目标层：<span id="toFloor">00</span>
+                    </div>
+                </div>
+                <div class="card-floor-info b-light b-t">
+                    <div class="card-floor-info-card b-light b-r">
+                        <span class="card-floor-info-card-title">状态</span>
+                        <div class="font-thin h2"><span id="status-text">获取中</span></div>
+                    </div>
+                    <div class="card-floor-info-card">
+                        <span class="card-floor-info-card-title">厢门</span>
+                        <div class="font-thin h2"><span id="door">获取中</span></div>
+                    </div>
+                </div>
+                <div class="card-floor-info b-light b-t b-b">
+                    <div class="card-floor-info-card b-light b-r">
+                        <span class="card-floor-info-card-title">乘客</span>
+                        <div class="font-thin h2"><span id="passenger">获取中</span></div>
+                    </div>
+                    <div class="card-floor-info-card">
+                        <span class="card-floor-info-card-title">速度</span>
+                        <div class="font-thin h2"><span id="speed">获取中</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-main-harf">
+                <ul class="list-group list-group-lg m-b-none">
+                    <li class="list-group-item font-thin" id="alarm_00">
+                        <span class="list-group-item-status" id="alarm_00_text">○</span>
+                        <span class="list-group-item-text">困人</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_01">
+                        <span class="list-group-item-status" id="alarm_01_text">○</span>
+                        <span class="list-group-item-text">超速运行</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_02">
+                        <span class="list-group-item-status" id="alarm_02_text">○</span>
+                        <span class="list-group-item-text">低速运行</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_03">
+                        <span class="list-group-item-status" id="alarm_03_text">○</span>
+                        <span class="list-group-item-text">冲顶</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_04">
+                        <span class="list-group-item-status" id="alarm_04_text">○</span>
+                        <span class="list-group-item-text">蹲底</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_05">
+                        <span class="list-group-item-status" id="alarm_05_text">○</span>
+                        <span class="list-group-item-text">开门运行</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_06">
+                        <span class="list-group-item-status" id="alarm_06_text">○</span>
+                        <span class="list-group-item-text">开门载人运行</span>
+                    </li>
+                    <li class="list-group-item font-thin" id="alarm_07">
+                        <span class="list-group-item-status" id="alarm_07_text">○</span>
+                        <span class="list-group-item-text">检修状态</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <script>
-        var host = location.host;
-        var wsUrl = 'ws://' + host + '/ws';
-        var reconnectDelay = 2000;
-        var maxReconnectDelay = 30000;
-        var c = null;
+    (function() {
+        'use strict';
 
+        // ========== DOM 引用 ==========
         var device = document.getElementById("device");
         var lastUpdateTime = document.getElementById("lastUpdateTime");
         var floor = document.getElementById("floor");
         var toFloor = document.getElementById("toFloor");
         var direction = document.getElementById("direction");
         var door = document.getElementById("door");
-        var status_text = document.getElementById("status-text");
+        var statusText = document.getElementById("status-text");
         var passenger = document.getElementById("passenger");
         var speed = document.getElementById("speed");
+        var connectionStatus = document.getElementById("connectionStatus");
+        var statusDot = document.getElementById("statusDot");
+        var toast = document.getElementById("toast");
 
+        // ========== 报警列表项缓存 ==========
+        var alarmItems = {};
+        var alarmTexts = {};
+        for (var i = 0; i < 8; i++) {
+            var code = (i < 10 ? '0' : '') + i;
+            alarmItems[code] = document.getElementById('alarm_' + code);
+            alarmTexts[code] = document.getElementById('alarm_' + code + '_text');
+        }
+
+        // ========== 告警码映射 ==========
         var ALARM_MAP = {
             "00": 0, "01": 1, "02": 2, "03": 3,
             "04": 4, "05": 5, "06": 6, "07": 7
         };
 
-        function connectWebSocket() {
-            if (c != null) { try { c.close(); } catch(e) {} }
-            c = new WebSocket(wsUrl);
+        // ========== WebSocket 连接管理 ==========
+        var ws = null;
+        var reconnectTimer = null;
+        var reconnectDelay = 1000;
+        var maxReconnectDelay = 30000;
 
-            c.onopen = function() {
-                status_text.innerHTML = "已连接";
-                lastUpdateTime.innerHTML = dateFtt("yyyy-MM-dd hh:mm:ss", new Date());
-                reconnectDelay = 2000;
+        function connectWebSocket() {
+            if (ws) {
+                try { ws.close(); } catch(e) {}
+            }
+
+            var url = 'ws://' + location.host + '/ws';
+            ws = new WebSocket(url);
+
+            ws.onopen = function() {
+                clearReconnectTimer();
+                reconnectDelay = 1000;
+                setConnectionStatus(true);
+                statusText.textContent = '已连接';
+                lastUpdateTime.textContent = dateFtt('yyyy-MM-dd hh:mm:ss', new Date());
+                showToast('已连接到监控服务器', 'success');
             };
 
-            c.onmessage = function(msg) {
+            ws.onmessage = function(msg) {
                 try {
                     var obj = JSON.parse(msg.data);
-                    updateDisplay(obj);
+                    handleMessage(obj);
                 } catch(e) {}
             };
 
-            c.onclose = function(evt) {
-                status_text.innerHTML = "连接断开，重连中...";
-                setTimeout(connectWebSocket, reconnectDelay);
-                reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
+            ws.onclose = function() {
+                setConnectionStatus(false);
+                scheduleReconnect();
             };
+
+            ws.onerror = function() {};
         }
 
-        function updateDisplay(obj) {
-            device.innerHTML = obj.Device || "";
-            floor.innerHTML = obj.Floor || "00";
-            toFloor.innerHTML = obj.ToFloor || "00";
-            speed.innerHTML = obj.Speed || "";
+        function scheduleReconnect() {
+            clearReconnectTimer();
+            showToast('连接已断开，正在重连... (' + Math.round(reconnectDelay / 1000) + 's)', 'warning');
+            reconnectTimer = setTimeout(function() {
+                connectWebSocket();
+                reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
+            }, reconnectDelay);
+        }
 
+        function clearReconnectTimer() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        }
+
+        function setConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.textContent = '已连接';
+                statusDot.className = 'status-dot connected';
+            } else {
+                connectionStatus.textContent = '已断开';
+                statusDot.className = 'status-dot disconnected';
+            }
+        }
+
+        // ========== 消息处理 ==========
+        function handleMessage(obj) {
+            // 设备 ID（使用 textContent 防 XSS）
+            device.textContent = obj.Device || '--';
+
+            // 楼层
+            floor.textContent = obj.Floor || '--';
+            toFloor.textContent = obj.ToFloor || '--';
+
+            // 速度
+            speed.textContent = obj.Speed || '--';
+
+            // 状态
             switch(obj.Status) {
-                case "00": status_text.innerHTML = "正常"; break;
-                case "01": status_text.innerHTML = "异常"; break;
-                case "02": status_text.innerHTML = "未知"; break;
-                default: status_text.innerHTML = obj.Status || "未知"; break;
+                case '00': statusText.textContent = '正常'; break;
+                case '01': statusText.textContent = '异常'; break;
+                case '02': statusText.textContent = '未知'; break;
+                default:   statusText.textContent = '--';   break;
             }
 
+            // 方向
             switch(obj.Direction) {
-                case "00": direction.innerHTML = " "; break;
-                case "01": direction.innerHTML = "▲"; break;
-                case "02": direction.innerHTML = "▼"; break;
-                default: direction.innerHTML = obj.Direction || "-"; break;
+                case '00': direction.textContent = ' '; break;
+                case '01': direction.textContent = '▲'; break;
+                case '02': direction.textContent = '▼'; break;
+                default:   direction.textContent = '-'; break;
             }
 
+            // 轿厢门
             switch(obj.Door) {
-                case "00": door.innerHTML = "关门到位"; break;
-                case "01": door.innerHTML = "开门到位"; break;
-                case "02": door.innerHTML = "关门中"; break;
-                case "03": door.innerHTML = "开门中"; break;
-                default: door.innerHTML = obj.Door || "未知"; break;
+                case '00': door.textContent = '关门到位'; break;
+                case '01': door.textContent = '开门到位'; break;
+                case '02': door.textContent = '关门中';   break;
+                case '03': door.textContent = '开门中';   break;
+                default:   door.textContent = '--';       break;
             }
 
+            // 乘客
             switch(obj.Passenger) {
-                case "00": passenger.innerHTML = "无乘客"; break;
-                case "01": passenger.innerHTML = "有乘客"; break;
-                default: passenger.innerHTML = obj.Passenger || ""; break;
+                case '00': passenger.textContent = '无乘客'; break;
+                case '01': passenger.textContent = '有乘客'; break;
+                default:   passenger.textContent = '--';     break;
             }
 
-            // 告警匹配
+            // ========== 报警信息（数字码 + 字符串回退） ==========
             resetAllAlarms();
-            var alarmStr = obj.Alarm || "";
+            var alarmStr = obj.Alarm || '';
             if (alarmStr) {
                 var matched = false;
+                // 先尝试数字编码匹配
                 for (var code in ALARM_MAP) {
                     if (alarmStr.indexOf(code) > -1) {
                         setAlarmOn(ALARM_MAP[code]);
                         matched = true;
                     }
                 }
+                // 字符串回退匹配（兼容后端告警规则引擎命名的告警码）
                 if (!matched) {
-                    if (alarmStr.indexOf("LEVELING") > -1 || alarmStr.indexOf("TIMEOUT") > -1) setAlarmOn(0);
-                    if (alarmStr.indexOf("ALARM_FIELD") > -1) setAlarmOn(0);
-                    if (alarmStr.indexOf("SPEED") > -1) setAlarmOn(1);
-                    if (alarmStr.indexOf("FLOOR_JUMP") > -1) setAlarmOn(4);
-                    if (alarmStr.indexOf("DOOR_OPEN") > -1) setAlarmOn(5);
-                    if (alarmStr.indexOf("DIRECTION") > -1) setAlarmOn(2);
-                    if (alarmStr.indexOf("LONG_IDLE") > -1 || alarmStr.indexOf("IDLE") > -1) setAlarmOn(7);
-                    if (alarmStr.indexOf("DEVICE_OFFLINE") > -1 || alarmStr.indexOf("OFFLINE") > -1) setAlarmOn(3);
+                    if (alarmStr.indexOf('LEVELING') > -1 || alarmStr.indexOf('TIMEOUT') > -1) setAlarmOn(0);
+                    if (alarmStr.indexOf('ALARM_FIELD') > -1) setAlarmOn(0);
+                    if (alarmStr.indexOf('LOW_SPEED') > -1) setAlarmOn(2);
+                    else if (alarmStr.indexOf('SPEED') > -1) setAlarmOn(1);
+                    if (alarmStr.indexOf('OVER_TOP') > -1) setAlarmOn(3);
+                    if (alarmStr.indexOf('FLOOR_JUMP') > -1) setAlarmOn(4);
+                    if (alarmStr.indexOf('DOOR_OPEN_RUNNING') > -1) {
+                        setAlarmOn(5);
+                        // 开门载人运行：DOOR_OPEN_RUNNING + 有乘客
+                        if (obj.Passenger === '01') setAlarmOn(6);
+                    }
+                    if (alarmStr.indexOf('DOOR_OPEN_TOO_LONG') > -1) setAlarmOn(5);
+                    if (alarmStr.indexOf('LONG_IDLE') > -1 || alarmStr.indexOf('IDLE') > -1) setAlarmOn(7);
+                    if (alarmStr.indexOf('DEVICE_OFFLINE') > -1 || alarmStr.indexOf('OFFLINE') > -1) setAlarmOn(7);
+                    if (alarmStr.indexOf('DIRECTION') > -1) setAlarmOn(7);
                 }
             }
 
-            lastUpdateTime.innerHTML = dateFtt("yyyy-MM-dd hh:mm:ss", new Date());
+            // 更新时间
+            lastUpdateTime.textContent = dateFtt('yyyy-MM-dd hh:mm:ss', new Date());
         }
 
         function resetAllAlarms() {
             for (var i = 0; i < 8; i++) {
-                var alarmNum = (i < 10) ? "0" + i : "" + i;
-                var el = document.getElementById("alarm_" + alarmNum);
-                var tx = document.getElementById("alarm_" + alarmNum + "_text");
-                if (el) el.className = "list-group-item font-thin";
-                if (tx) tx.innerText = "○";
+                var code = (i < 10 ? '0' : '') + i;
+                var item = alarmItems[code];
+                var icon = alarmTexts[code];
+                if (item) item.className = 'list-group-item font-thin';
+                if (icon) icon.textContent = '\u25CB';
             }
-            if (speed) speed.className = "font-thin h2";
+            if (speed) speed.className = 'font-thin h2';
         }
 
         function setAlarmOn(index) {
-            var alarmNum = (index < 10) ? "0" + index : "" + index;
-            var el = document.getElementById("alarm_" + alarmNum);
-            var tx = document.getElementById("alarm_" + alarmNum + "_text");
-            if (el) el.className = "list-group-item font-thin list-group-item-alarm";
-            if (tx) tx.innerText = "☉";
-            if (index === 1 && speed) speed.className = "font-thin h2 list-group-item-alarm";
+            var code = (index < 10 ? '0' : '') + index;
+            var item = alarmItems[code];
+            var icon = alarmTexts[code];
+            if (item) item.className = 'list-group-item font-thin list-group-item-alarm';
+            if (icon) icon.textContent = '\u2609';
+            if (index === 1 && speed) speed.className = 'font-thin h2 list-group-item-alarm';
         }
 
+        // ========== Toast 提示 ==========
+        function showToast(message, type) {
+            toast.textContent = message;
+            toast.className = 'toast ' + (type || '') + ' show';
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(function() {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // ========== 日期格式化 ==========
         function dateFtt(fmt, date) {
             var o = {
-                "M+" : date.getMonth()+1,
-                "d+" : date.getDate(),
-                "h+" : date.getHours(),
-                "m+" : date.getMinutes(),
-                "s+" : date.getSeconds(),
-                "q+" : Math.floor((date.getMonth()+3)/3),
-                "S"  : date.getMilliseconds()
+                'M+': date.getMonth() + 1,
+                'd+': date.getDate(),
+                'h+': date.getHours(),
+                'm+': date.getMinutes(),
+                's+': date.getSeconds(),
+                'q+': Math.floor((date.getMonth() + 3) / 3),
+                'S' : date.getMilliseconds()
             };
-            if(/(y+)/.test(fmt))
-                fmt = fmt.replace(RegExp.$1, (date.getFullYear()+"").substr(4 - RegExp.$1.length));
-            for(var k in o)
-                if(new RegExp("("+ k +")").test(fmt))
-                    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length==1) ? (o[k]) : (("00"+ o[k]).substr((""+ o[k]).length)));
+            if (/(y+)/.test(fmt))
+                fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
+            for (var k in o)
+                if (new RegExp('(' + k + ')').test(fmt))
+                    fmt = fmt.replace(RegExp.$1, (RegExp.$1.length === 1) ? (o[k]) : (('00' + o[k]).substr(('' + o[k]).length)));
             return fmt;
         }
 
+        // ========== 清理 ==========
+        window.addEventListener('beforeunload', function() {
+            clearReconnectTimer();
+            if (ws) {
+                ws.onclose = null;
+                ws.close();
+            }
+        });
+
+        // ========== 启动 ==========
+        lastUpdateTime.textContent = '正在连接...';
         connectWebSocket();
+
+    })();
     </script>
-</html>
-        };
-    </script>
+</body>
 </html>

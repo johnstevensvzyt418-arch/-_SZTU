@@ -141,7 +141,11 @@ func redisSubscriber(redisAddr, redisPassword string) {
 		ch := pubsub.Channel()
 		for msg := range ch {
 			log.Printf("[Redis] 收到 %s: %s", msg.Channel, msg.Payload)
-			// 告警频道消息也通过 WebSocket 广播，前端根据 Alarm 字段处理
+			// 仅广播 elevator:status 频道到 WebSocket（告警信息已包含在 status 的 Alarm 字段中）
+			// elevator:alarm 频道格式不同，跳过以免覆盖前端状态数据
+			if msg.Channel == "elevator:alarm" {
+				continue
+			}
 			if cache != nil {
 				cache.SendMessage(msg.Payload)
 			}

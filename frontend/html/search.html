@@ -1,66 +1,288 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>电梯物联网监控系统</title>
     <style>
-        .search_form{
-        width:602px;
-        height:500px;
+        :root {
+            --bg-dark: #0a1628;
+            --accent: #00d4ff;
+            --accent2: #00e676;
+            --glass-bg: rgba(13, 27, 52, 0.85);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --radius-lg: 16px;
         }
- 
-    /*左边输入框设置样式*/
-    .input_text{
-        opacity: 0.7;
 
-        width:400px;
-        height: 40px;
-        border:1px solid green;
-        /*清除掉默认的padding*/
-        padding:0px;
- 
-        /*提示字首行缩进*/
-        text-indent: 10px;
- 
-        /*去掉蓝色高亮框*/
-        outline: none;
- 
-        /*用浮动解决内联元素错位及小间距的问题*/
-        float:left;
-    }
- 
-    .input_sub{
-        opacity: 0.7;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        width:100px;
-        height: 42px;
-        background: green;
- 
-        /*去掉submit按钮默认边框*/
-        border:0px;
-        /*改成右浮动也是可以的*/
-        float:left;
-        color:white;/*搜索的字体颜色为白色*/
-        cursor:pointer;/*鼠标变为小手*/
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-dark);
+            background-image:
+                /* 网格线 */
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                /* 光晕 */
+                radial-gradient(ellipse at 30% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 60%, rgba(0, 230, 118, 0.05) 0%, transparent 60%),
+                /* 背景图 */
+                url(/static/img/background.jpg);
+            background-size: 60px 60px, 60px 60px, cover, cover, cover;
+            background-position: center;
+            background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #e0e8f0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ---- 装饰几何元素 ---- */
+        .decor-geo {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0.06;
+            z-index: 0;
+        }
+        .decor-hex {
+            width: 240px;
+            height: 240px;
+            border: 1px solid var(--accent);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            top: 8%;
+            right: 10%;
+            animation: floatSlow 12s ease-in-out infinite;
+        }
+        .decor-circle {
+            width: 180px;
+            height: 180px;
+            border: 1px solid var(--accent2);
+            border-radius: 50%;
+            bottom: 10%;
+            left: 8%;
+            animation: floatSlow 15s ease-in-out infinite reverse;
+        }
+        .decor-dots {
+            width: 120px;
+            height: 120px;
+            background-image: radial-gradient(rgba(0, 212, 255, 0.5) 1px, transparent 1px);
+            background-size: 20px 20px;
+            top: 15%;
+            left: 15%;
+            animation: floatSlow 10s ease-in-out infinite;
+        }
+        @keyframes floatSlow {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(15px, -20px) rotate(3deg); }
+            66% { transform: translate(-10px, 15px) rotate(-3deg); }
+        }
+
+        /* ---- 主容器 ---- */
+        .main-container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 20px;
+            transform: translateY(-20%);
+        }
+
+        /* ---- Logo / 图标 ---- */
+        .logo-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 24px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 24px rgba(0, 212, 255, 0.1);
+        }
+
+        .logo-icon svg {
+            width: 36px;
+            height: 36px;
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 1.8;
+        }
+
+        /* ---- 品牌标题 ---- */
+        .brand-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #00d4ff 0%, #00e676 60%, #00d4ff 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientMove 4s linear infinite;
+            letter-spacing: 2px;
+        }
+        @keyframes gradientMove {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .brand-subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 3px;
+            margin-bottom: 48px;
+            text-transform: uppercase;
+        }
+
+        /* ---- 搜索卡片 ---- */
+        .search-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 36px 32px;
+            width: 440px;
+            max-width: 94vw;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 212, 255, 0.06);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .search-card:hover {
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.12);
+        }
+
+        /* ---- 搜索表单 ---- */
+        .search-form {
+            display: flex;
+            gap: 0;
+        }
+
+        .search-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: none;
+            border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+            padding: 14px 20px;
+            font-size: 15px;
+            color: #fff;
+            outline: none;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.1) inset;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #0098b8, #00b894);
+            border: none;
+            border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-family: inherit;
+            letter-spacing: 1px;
+        }
+
+        .search-btn:hover {
+            background: linear-gradient(135deg, #00b8d8, #00d4a8);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .search-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* ---- 底部 ---- */
+        .footer-text {
+            margin-top: 32px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 1px;
+        }
+
+        /* ---- 响应式 ---- */
+        @media (max-width: 500px) {
+            .brand-title { font-size: 22px; }
+            .search-card { padding: 24px 16px; }
+            .search-form { flex-direction: column; gap: 10px; }
+            .search-input { border-radius: var(--radius-lg); border-right: 1px solid rgba(255, 255, 255, 0.1); }
+            .search-btn { border-radius: var(--radius-lg); padding: 12px; }
+        }
     </style>
 </head>
-<body style="text-align:center;background-image:url(../static/img/background.jpg);">
-<div style="position: absolute;
-  width: 500px;
-  height:200px;
-  left:50%; 
-  top:50%;
 
-  margin-left:-250px; 
-  margin-top:-100px;
-  text-align: center;">
-    <form class="search_form" action="/show" target="_blank">
-    <input type="text" class="input_text" placeholder="请输入电梯id" name="id"><!-- -->
-    <input type="submit" value="搜索" class="input_sub">
-    </form>
-	</div>
+<body>
+
+    <!-- 装饰几何元素 -->
+    <div class="decor-geo decor-hex"></div>
+    <div class="decor-geo decor-circle"></div>
+    <div class="decor-geo decor-dots"></div>
+
+    <!-- 主容器 -->
+    <div class="main-container">
+
+        <!-- 电梯图标 -->
+        <div class="logo-icon">
+            <svg viewBox="0 0 24 24">
+                <!-- 电梯厢体 -->
+                <rect x="4" y="1" width="16" height="22" rx="1.5" stroke-linejoin="round"/>
+                <!-- 上下箭头 -->
+                <polyline points="9,7 12,4 15,7"/>
+                <polyline points="9,17 12,20 15,17"/>
+                <!-- 中线 -->
+                <line x1="12" y1="4" x2="12" y2="20"/>
+            </svg>
+        </div>
+
+        <!-- 品牌标题 -->
+        <h1 class="brand-title">电梯物联网监控系统</h1>
+        <p class="brand-subtitle">Elevator IoT Monitor</p>
+
+        <!-- 搜索卡片 -->
+        <div class="search-card">
+            <form class="search-form" target="_blank" id="searchForm">
+                <input
+                    type="text"
+                    class="search-input"
+                    placeholder="请输入电梯设备 ID"
+                    name="id"
+                    autocomplete="off"
+                    autofocus
+                />
+                <button type="submit" class="search-btn">搜 索</button>
+            </form>
+        </div>
+
+        <!-- 底部 -->
+        <p class="footer-text">Elevator IoT Monitoring System &copy; 2024</p>
+    </div>
+
+    <script>
+        // 自动适配：file:// 协议用相对路径，http:// 协议用服务器路径
+        var isFile = window.location.protocol === 'file:';
+        document.getElementById('searchForm').action = isFile ? 'index2.html' : '/show';
+    </script>
 </body>
-<html>
+
+</html>

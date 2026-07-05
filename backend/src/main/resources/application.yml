@@ -69,8 +69,12 @@ alarm:
     threshold-seconds: 20
   speed:
     max-mps: 3.0
+  low-speed:
+    min-mps: 0.1
   floor-jump:
     max-diff: 2
+  over-top:
+    max-floor: 30
   leveling:
     timeout-seconds: 30
   cooldown:
