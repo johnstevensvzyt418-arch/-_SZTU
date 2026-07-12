@@ -289,7 +289,7 @@
                     if (alarmStr.indexOf('LEVELING') > -1 || alarmStr.indexOf('TIMEOUT') > -1) setAlarmOn(0);
                     if (alarmStr.indexOf('ALARM_FIELD') > -1) setAlarmOn(0);
                     if (alarmStr.indexOf('LOW_SPEED') > -1) setAlarmOn(2);
-                    else if (alarmStr.indexOf('SPEED') > -1) setAlarmOn(1);
+                    if (alarmStr.indexOf('SPEED_ABNORMAL') > -1) setAlarmOn(1);
                     if (alarmStr.indexOf('OVER_TOP') > -1) setAlarmOn(3);
                     if (alarmStr.indexOf('FLOOR_JUMP') > -1) setAlarmOn(4);
                     if (alarmStr.indexOf('DOOR_OPEN_RUNNING') > -1) {

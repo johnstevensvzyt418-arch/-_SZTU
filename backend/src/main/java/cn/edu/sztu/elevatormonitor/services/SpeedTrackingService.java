@@ -27,6 +27,7 @@ import java.util.Map;
  *   HSET elevator:speedtrack:{deviceId}
  *     lastFloor      → "01"
  *     lastTimeEpoch  → "1719312000"
+ *     lastSpeed      → "0.05"       (缓存上次有效速度，避免被同秒/同楼层的后续报文覆盖为0)
  * </pre>
  *
  * @author bugfix
@@ -69,15 +70,26 @@ public class SpeedTrackingService {
         Map<Object, Object> lastState = stringRedisTemplate.opsForHash().entries(hashKey);
         String lastFloor = lastState != null ? (String) lastState.get("lastFloor") : null;
         String lastTimeStr = lastState != null ? (String) lastState.get("lastTimeEpoch") : null;
-
-        // 更新当前状态到 Redis（先写入，确保后续请求能读取）
-        stringRedisTemplate.opsForHash().put(hashKey, "lastFloor", currentFloor);
-        stringRedisTemplate.opsForHash().put(hashKey, "lastTimeEpoch", String.valueOf(currentEpoch));
+        String lastSpeedStr = lastState != null ? (String) lastState.get("lastSpeed") : null;
 
         // 首次上报，无历史数据
         if (lastFloor == null || lastTimeStr == null) {
+            // 更新当前状态到 Redis
+            stringRedisTemplate.opsForHash().put(hashKey, "lastFloor", currentFloor);
+            stringRedisTemplate.opsForHash().put(hashKey, "lastTimeEpoch", String.valueOf(currentEpoch));
+            stringRedisTemplate.opsForHash().put(hashKey, "lastSpeed", "0.0");
             LOGGER.debug("[SpeedTrack] 设备 {} 首次上报, floor={}, 速度=0.0", deviceId, currentFloor);
             return 0.0;
+        }
+
+        // 解析上次缓存的速度（用于楼层未变时保持显示）
+        double cachedSpeed = 0.0;
+        if (lastSpeedStr != null) {
+            try {
+                cachedSpeed = Double.parseDouble(lastSpeedStr);
+            } catch (NumberFormatException e) {
+                cachedSpeed = 0.0;
+            }
         }
 
         // 计算楼层差和时间差
@@ -90,20 +102,30 @@ public class SpeedTrackingService {
         } catch (NumberFormatException e) {
             LOGGER.warn("[SpeedTrack] 数值解析失败: deviceId={}, curFloor={}, lastFloor={}",
                     deviceId, currentFloor, lastFloor);
-            return 0.0;
+            return cachedSpeed;  // 解析失败时返回缓存速度，避免错误覆盖
         }
 
         int floorDiff = Math.abs(curFloor - prevFloor);
         long timeDiffSec = Math.abs(currentEpoch - lastEpoch);
 
-        // 同一秒内或楼层未变化，不计算速度
+        // 更新当前状态到 Redis（只在楼层变化时更新 lastFloor，始终更新时间戳）
+        if (floorDiff > 0) {
+            stringRedisTemplate.opsForHash().put(hashKey, "lastFloor", currentFloor);
+        }
+        stringRedisTemplate.opsForHash().put(hashKey, "lastTimeEpoch", String.valueOf(currentEpoch));
+
+        // 同一秒内或楼层未变化 → 返回上次缓存的速度，保持前端速度显示不归零
         if (timeDiffSec == 0 || floorDiff == 0) {
-            LOGGER.debug("[SpeedTrack] 设备 {} 时间差=0或楼层未变, 速度=0.0", deviceId);
-            return 0.0;
+            LOGGER.debug("[SpeedTrack] 设备 {} 时间差=0或楼层未变, 返回缓存速度={}m/s",
+                    deviceId, String.format("%.2f", cachedSpeed));
+            return cachedSpeed;
         }
 
         double distance = floorDiff * FLOOR_HEIGHT_M;
         double speed = distance / timeDiffSec;
+
+        // 缓存本次计算的有效速度
+        stringRedisTemplate.opsForHash().put(hashKey, "lastSpeed", String.valueOf(speed));
 
         LOGGER.info("[SpeedTrack] 设备 {}: {}F→{}F, 间隔{}s, 距离{}m, 速度={}m/s",
                 deviceId, prevFloor, curFloor, timeDiffSec,
