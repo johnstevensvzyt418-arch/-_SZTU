@@ -1,0 +1,15 @@
+# ============================================================
+# Elevator Monitor — MQTT 桥接器 Docker 镜像
+# ============================================================
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+# 安装依赖
+RUN pip install --no-cache-dir paho-mqtt==1.6.1
+
+# 复制桥接脚本
+COPY mqtt_bridge.py .
+
+# 启动
+ENTRYPOINT ["python", "mqtt_bridge.py"]

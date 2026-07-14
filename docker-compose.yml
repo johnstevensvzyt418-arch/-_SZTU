@@ -1,0 +1,198 @@
+# ============================================================
+# Elevator Monitor — Docker Compose 生产部署编排
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 查看日志: docker compose logs -f
+# ============================================================
+
+version: "3.8"
+
+services:
+  # ==========================================================
+  # 1. MySQL 数据库
+  # ==========================================================
+  mysql:
+    image: mysql:8.0
+    container_name: elevator-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SZTUbdi@1005}
+      MYSQL_DATABASE: elevator_monitor
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-SZTUbdi@1005}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - elevator-net
+
+  # ==========================================================
+  # 2. Redis 缓存 & 消息队列
+  # ==========================================================
+  redis:
+    image: redis:7-alpine
+    container_name: elevator-redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - elevator-net
+
+  # ==========================================================
+  # 3. Spring Boot 后端
+  # ==========================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: elevator-backend
+    restart: always
+    ports:
+      - "${BACKEND_PORT:-10008}:10008"
+    environment:
+      # JVM 内存限制
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+      # 服务端口
+      SERVER_PORT: "10008"
+      # MySQL 连接（使用 Docker 服务名）
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SZTUbdi@1005}
+      # Redis 连接
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # MQTT Broker（远程）
+      MQTT_BROKER_URL: ${MQTT_BROKER_URL:-tcp://tcp.sealosbja.site:35205}
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID:-elevator-monitor-prod}
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-SZTUbdi@1005}
+      # 云平台接入
+      PLATFORM_WEB_URL: ${PLATFORM_WEB_URL:-https://aqwtmupbegka.sealosbja.site}
+      PLATFORM_API_BASE: ${PLATFORM_API_BASE:-https://bbjxeudameoz.sealosbja.site/api}
+      PLATFORM_WS_URL: ${PLATFORM_WS_URL:-wss://bbjxeudameoz.sealosbja.site/ws}
+      PLATFORM_USERNAME: ${PLATFORM_USERNAME:-admin}
+      PLATFORM_PASSWORD: ${PLATFORM_PASSWORD:-SZTUbdi@1005}
+      # AI 异常检测服务
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai_service:8000}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10008/api/v2/status/00000001"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - elevator-net
+
+  # ==========================================================
+  # 4. Go 前端 (WebSocket 服务器)
+  # ==========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: elevator-frontend
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - elevator-net
+
+  # ==========================================================
+  # 5. AI 异常检测服务 (Python + PyTorch LSTM-AE)
+  # ==========================================================
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    container_name: elevator-ai
+    restart: always
+    ports:
+      - "${AI_SERVICE_PORT:-8000}:8000"
+    environment:
+      # PyTorch 内存限制
+      PYTORCH_NO_CUDA_MEMORY_CACHING: "1"
+      OMP_NUM_THREADS: "2"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+    networks:
+      - elevator-net
+
+  # ==========================================================
+  # 6. MQTT 桥接器 (Python — 可选，仅当后端不直接连接 MQTT 时启用)
+  # ==========================================================
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    container_name: elevator-mqtt-bridge
+    restart: always
+    environment:
+      BACKEND_URL: http://backend:10008/api/v2/mnk
+      MQTT_BROKER_URL: ${MQTT_BROKER_URL:-tcp.sealosbja.site}
+      MQTT_BROKER_PORT: ${MQTT_BROKER_PORT:-35205}
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-SZTUbdi@1005}
+    depends_on:
+      backend:
+        condition: service_healthy
+    # 注意：如果后端已通过 Spring Integration 直连 MQTT，可以注释掉此服务
+    # profiles:
+    #   - bridge
+    networks:
+      - elevator-net
+
+# ==========================================================
+# 数据卷
+# ==========================================================
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ==========================================================
+# 网络
+# ==========================================================
+networks:
+  elevator-net:
+    driver: bridge

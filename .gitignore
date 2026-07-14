@@ -64,12 +64,37 @@ Web.log
 # ====== Dev Scripts (testing/simulation) ======
 *_simulator.py
 cleanup_*.py
+cleanup_*.go
 generate_report.py
 test_*.ps1
 test_*.py
+test_*.sh
 MANUAL_TEST_COMMANDS.ps1
 VALIDATION_REPORT.md
+ACCEPTANCE_REPORT.md
+acceptance_test.py
+api_tests.py
+demo_alarms.ps1
 *.http
+query
+result.txt
+test_result.txt
+massive_result*.txt
+
+# ====== Analysis artifacts ======
+backend/dependency-tree*.txt
+backend/tree-*.txt
+
+# ====== Go build cache ======
+magic.mgc
+
+# ====== Python ======
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
 
 # ====== OS ======
 .DS_Store

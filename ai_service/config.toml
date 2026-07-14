@@ -1,0 +1,55 @@
+[Train]
+learning_rate = 0.0004
+num_epochs = 300
+weight_decay = 5e-5
+patience = 10
+batch_size = 16
+
+
+[LSTM_AE]
+name = "LSTM_AE"
+n_features = 5
+hidden_size = 128
+num_layers = 1
+dropout = 0
+
+
+[CNN_LSTM_AE]
+name = "CNN_LSTM_AE"
+n_features = 5
+out_channels = 32
+hidden_size = 256
+num_layers = 2
+dropout = 0.3
+
+
+[CNN_AE]
+name = "CNN_AE"
+input_size = 5
+hidden_channels = 128
+
+
+[MLP_AE]
+name = "MLP_AE"
+input_size = 5
+hidden_size = 1024
+dropout = 0.5
+
+
+[Transformer_AE]
+name = "Transformer_AE"
+n_features = 5
+embed_dim = 64
+num_heads = 4
+num_layers = 2
+max_seq_len = 128
+dropout = 0.1
+
+
+[Deploy]
+model_type = "LSTM_AE"
+weight_file = "trained_models/xinshida/LSTM_AE-128-1-2026-06-29-16-43.pth"
+threshold = 90.0
+score_mode = "mean"
+scoring_params_file = "trained_models/xinshida/LSTM_AE-128-1-2026-06-29-16-43-scoring.npz"
+use_saved_scoring_params = true
