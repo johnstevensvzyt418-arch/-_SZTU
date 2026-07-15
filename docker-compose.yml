@@ -76,6 +76,8 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-SZTUbdi@1005}
       # Redis 连接
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: "6379"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
