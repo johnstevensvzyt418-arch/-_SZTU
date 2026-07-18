@@ -107,6 +107,28 @@
                         <span class="list-group-item-text">检修状态</span>
                     </li>
                 </ul>
+
+                <!-- AI 异常检测面板 -->
+                <div class="ai-panel" id="aiPanel">
+                    <div class="ai-panel-header">🤖 AI 异常检测</div>
+                    <div class="ai-panel-body">
+                        <div class="ai-score-row">
+                            <span class="ai-label">异常分数</span>
+                            <span class="ai-value" id="aiScore">--</span>
+                        </div>
+                        <div class="ai-score-row">
+                            <span class="ai-label">阈值</span>
+                            <span class="ai-value" id="aiThreshold">90.0</span>
+                        </div>
+                        <div class="ai-status-row">
+                            <span class="ai-status-badge" id="aiStatusBadge">等待数据</span>
+                        </div>
+                        <div class="ai-time-row">
+                            <span class="ai-label">检测时间</span>
+                            <span class="ai-value ai-time" id="aiTime">--</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -144,6 +166,13 @@
             alarmTexts[code] = document.getElementById('alarm_' + code + '_text');
         }
 
+        // ========== AI 面板 DOM ==========
+        var aiScore = document.getElementById('aiScore');
+        var aiThreshold = document.getElementById('aiThreshold');
+        var aiStatusBadge = document.getElementById('aiStatusBadge');
+        var aiTime = document.getElementById('aiTime');
+        var aiPanel = document.getElementById('aiPanel');
+
         // ========== 告警码映射 ==========
         var ALARM_MAP = {
             "00": 0, "01": 1, "02": 2, "03": 3,
@@ -176,6 +205,11 @@
             ws.onmessage = function(msg) {
                 try {
                     var obj = JSON.parse(msg.data);
+                    // AI 告警消息单独处理
+                    if (obj.type === 'ai_alarm') {
+                        handleAiAlarm(obj.data);
+                        return;
+                    }
                     handleMessage(obj);
                 } catch(e) {}
             };
@@ -211,6 +245,43 @@
             } else {
                 connectionStatus.textContent = '已断开';
                 statusDot.className = 'status-dot disconnected';
+            }
+        }
+
+        // ========== AI 异常检测消息处理 ==========
+        function handleAiAlarm(data) {
+            // data 格式: {"deviceId":"xxx","score":45.23,"threshold":90.0,"is_abnormal":false,"label":"normal","time":"..."}
+            var deviceId = data.deviceId || '--';
+            var score = data.score;
+            var threshold = data.threshold || 90.0;
+            var isAbnormal = data.is_abnormal;
+            var label = data.label || (isAbnormal ? 'abnormal' : 'normal');
+            var time = data.time || '';
+
+            // 设备过滤
+            if (targetDeviceId && targetDeviceId !== deviceId) return;
+
+            // 显示分数（保留1位小数）
+            aiScore.textContent = (score != null) ? Number(score).toFixed(1) : '--';
+            aiThreshold.textContent = Number(threshold).toFixed(1);
+
+            // 异常状态标识
+            if (isAbnormal) {
+                aiStatusBadge.textContent = '⚠ ' + deviceId + ' 异常';
+                aiStatusBadge.className = 'ai-status-badge ai-abnormal';
+                aiPanel.className = 'ai-panel ai-panel-alert';
+            } else if (score != null) {
+                aiStatusBadge.textContent = '✓ ' + deviceId + ' 正常';
+                aiStatusBadge.className = 'ai-status-badge ai-normal';
+                aiPanel.className = 'ai-panel';
+            }
+
+            // 检测时间
+            aiTime.textContent = time || dateFtt('yyyy-MM-dd hh:mm:ss', new Date());
+
+            // 异常时弹 Toast
+            if (isAbnormal && score != null) {
+                showToast('⚠ AI检测到异常！设备: ' + deviceId + ' 分数: ' + Number(score).toFixed(1), 'warning');
             }
         }
 

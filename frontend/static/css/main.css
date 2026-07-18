@@ -300,3 +300,93 @@ ul {
         height: 70px;
     }
 }
+
+/* ============================================
+   AI 异常检测面板
+   ============================================ */
+.ai-panel {
+    margin-top: 16px;
+    border: 1px solid #dee5e7;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.ai-panel-alert {
+    border-color: #ff9800;
+    box-shadow: 0 0 12px rgba(255, 152, 0, 0.25);
+}
+
+.ai-panel-header {
+    background: #f8f9fa;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #58666e;
+    border-bottom: 1px solid #dee5e7;
+}
+
+.ai-panel-body {
+    padding: 10px 14px;
+    background: #fff;
+}
+
+.ai-score-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.ai-label {
+    font-size: 13px;
+    color: #98a6ad;
+}
+
+.ai-value {
+    font-size: 16px;
+    font-weight: 500;
+    color: #58666e;
+    font-variant-numeric: tabular-nums;
+}
+
+.ai-status-row {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.ai-status-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.ai-normal {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.ai-abnormal {
+    background: #fff3e0;
+    color: #e65100;
+    animation: ai-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.ai-time-row {
+    margin-top: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ai-time {
+    font-size: 12px !important;
+    color: #c0c4cc !important;
+}
