@@ -95,8 +95,10 @@
                 </ul>
             </div>
         </div>
+        <div class="ai-panel" id="aiPanel"></div>
     </div>
 
+    <script src="/static/js/ai-monitor.js"></script>
     <script>
     (function() {
         'use strict';
@@ -114,6 +116,12 @@
         var connectionStatus = document.getElementById("connectionStatus");
         var statusDot = document.getElementById("statusDot");
         var toast = document.getElementById("toast");
+        var aiMonitor = window.AiMonitor.init({
+            rootId: 'aiPanel',
+            onAbnormal: function(result) {
+                showToast('AI 检测到 ' + result.deviceId + ' 异常，请及时核查', 'warning');
+            }
+        });
 
         // ========== 报警列表项缓存 ==========
         var alarmItems = {};
@@ -147,14 +155,13 @@
                 try { ws.close(); } catch(e) {}
             }
 
-            var url = 'ws://' + location.host + '/ws';
+            var url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
             ws = new WebSocket(url);
 
             ws.onopen = function() {
                 clearReconnectTimer();
                 reconnectDelay = 1000;
                 wsConnected = true;
-                // WebSocket 刚连上时设备状态仍为"等待数据"，直到收到第一条报文
                 if (lastDataTime === 0) {
                     setDeviceStatus('waiting');
                 }
@@ -165,9 +172,11 @@
             ws.onmessage = function(msg) {
                 try {
                     var obj = JSON.parse(msg.data);
-                    // 告警消息（AI + 规则引擎）单独处理
-                    if (obj.type === 'ai_alarm') {
-                        handleAlarm(obj.data);
+                    if (obj.type === 'ai_result') {
+                        if (obj.data && obj.data.RuleName) {
+                            handleRuleAlarm(obj.data);
+                        }
+                        aiMonitor.handle(obj.data);
                         return;
                     }
                     handleMessage(obj);
@@ -231,26 +240,24 @@
             if (staleCheckTimer) clearInterval(staleCheckTimer);
             staleCheckTimer = setInterval(function() {
                 var now = Date.now();
-                // 只有曾经收到过数据 + WebSocket 连通时才做超时判断
                 if (lastDataTime > 0 && wsConnected && (now - lastDataTime) > STALE_THRESHOLD) {
                     setDeviceStatus('offline');
-                    // 将页面数据变灰提示
                     if (statusText) statusText.textContent = '离线';
                 }
             }, 5000);
         }
 
         /**
-         * 处理告警消息（AI 模型 + 规则引擎告警如 DEVICE_OFFLINE）。
+         * 处理规则引擎告警（DEVICE_OFFLINE 等）。
          */
-        function handleAlarm(data) {
-            // 规则引擎告警: {"DeviceId":"xxx","RuleName":"DEVICE_OFFLINE",...}
-            if (data.RuleName) {
-                if (data.RuleName === 'DEVICE_OFFLINE') {
-                    setDeviceStatus('offline');
-                    if (statusText) statusText.textContent = '离线';
-                    showToast('⚠ ' + (data.DeviceId || '设备') + ' 离线: ' + (data.Description || ''), 'warning');
-                }
+        function handleRuleAlarm(data) {
+            var deviceId = data.DeviceId || '';
+            var ruleName = data.RuleName || '';
+            var desc = data.Description || '';
+            if (ruleName === 'DEVICE_OFFLINE') {
+                setDeviceStatus('offline');
+                if (statusText) statusText.textContent = '离线';
+                showToast('⚠ ' + (deviceId || '设备') + ' 离线: ' + desc, 'warning');
             }
         }
 
@@ -258,6 +265,7 @@
         function handleMessage(obj) {
             // 设备 ID（使用 textContent 防 XSS）
             device.textContent = obj.Device || '--';
+            aiMonitor.showDevice(obj.Device);
 
             // 楼层
             floor.textContent = obj.Floor || '--';

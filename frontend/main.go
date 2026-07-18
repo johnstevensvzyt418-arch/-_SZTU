@@ -120,6 +120,7 @@ func wshandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var cache *Cache
+var redisQueryClient *redis.Client
 
 // redisSubscriber 订阅 Redis elevator:status 频道，收到消息后通过 WebSocket 广播。
 // 支持自动重连：连接断开后每 3 秒重试。
@@ -133,17 +134,35 @@ func redisSubscriber(redisAddr, redisPassword string) {
 			DB:       0,
 		})
 
-		// 同时订阅状态频道和告警频道
-		pubsub := rdb.Subscribe(ctx, "elevator:status", "elevator:alarm")
-		log.Printf("[Redis] 已连接到 %s，订阅频道 elevator:status + elevator:alarm", redisAddr)
+		// 同时订阅设备状态和 AI 连续推理结果频道。
+		pubsub := rdb.Subscribe(ctx, "elevator:status", "elevator:ai_result")
+		log.Printf("[Redis] 已连接到 %s，订阅频道 elevator:status + elevator:ai_result", redisAddr)
 
 		// 阻塞读取消息
 		ch := pubsub.Channel()
 		for msg := range ch {
 			log.Printf("[Redis] 收到 %s: %s", msg.Channel, msg.Payload)
-			if msg.Channel == "elevator:alarm" {
-				// AI 告警消息：包装为 JSON 格式推送到 WebSocket
-				aiMsg := fmt.Sprintf(`{"type":"ai_alarm","data":%s}`, msg.Payload)
+			if msg.Channel == "elevator:ai_result" {
+				// 只保存已完成推理的 mnk-v2 结果，供页面刷新后恢复最近趋势。
+				var result struct {
+					DeviceID      string `json:"deviceId"`
+					SchemaVersion string `json:"schemaVersion"`
+					Ready         bool   `json:"ready"`
+				}
+				if err := json.Unmarshal([]byte(msg.Payload), &result); err == nil &&
+					result.DeviceID != "" && result.SchemaVersion == "mnk-v2" && result.Ready {
+					historyKey := "ai:history:mnk-v2:" + result.DeviceID
+					pipe := rdb.Pipeline()
+					pipe.LPush(ctx, historyKey, msg.Payload)
+					pipe.LTrim(ctx, historyKey, 0, 59)
+					pipe.Expire(ctx, historyKey, 7*24*time.Hour)
+					if _, err := pipe.Exec(ctx); err != nil {
+						log.Printf("[Redis] AI 历史保存失败 deviceId=%s: %v", result.DeviceID, err)
+					}
+				}
+
+				// AI 推理结果：包装为带类型的 JSON 后推送到 WebSocket。
+				aiMsg := fmt.Sprintf(`{"type":"ai_result","data":%s}`, msg.Payload)
 				if cache != nil {
 					cache.SendMessage(aiMsg)
 				}
@@ -197,6 +216,11 @@ func main() {
 	}
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+	redisQueryClient = redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: redisPassword,
+		DB:       0,
+	})
 
 	go redisSubscriber(redisAddr, redisPassword)
 	log.Printf("[Redis] 订阅协程已启动，目标: %s", redisAddr)
@@ -229,6 +253,61 @@ func main() {
 
 	//设置静态资源目录
 	r.Static("/static", "./static")
+
+	// AI 最近推理历史：同源接口避免跨域，页面刷新后可恢复最近 60 个得分点。
+	r.GET("/api/ai/history/:deviceId", func(c *gin.Context) {
+		deviceID := c.Param("deviceId")
+		if deviceID == "" || len(deviceID) > 64 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_DEVICE_ID"})
+			return
+		}
+
+		limit := 60
+		if value, err := strconv.Atoi(c.DefaultQuery("limit", "60")); err == nil {
+			if value < 1 {
+				value = 1
+			}
+			if value > 60 {
+				value = 60
+			}
+			limit = value
+		}
+
+		if redisQueryClient == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "REDIS_UNAVAILABLE"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		items, err := redisQueryClient.LRange(
+			ctx, "ai:history:mnk-v2:"+deviceID, 0, int64(limit-1),
+		).Result()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "HISTORY_UNAVAILABLE"})
+			return
+		}
+
+		// Redis 中为新到旧，接口返回旧到新，前端可以直接绘图。
+		history := make([]json.RawMessage, 0, len(items))
+		for i := len(items) - 1; i >= 0; i-- {
+			if json.Valid([]byte(items[i])) {
+				history = append(history, json.RawMessage(items[i]))
+			}
+		}
+
+		var latest json.RawMessage
+		if raw, err := redisQueryClient.HGet(ctx, "elevator:ai_result", deviceID).Result(); err == nil && json.Valid([]byte(raw)) {
+			latest = json.RawMessage(raw)
+		}
+
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, gin.H{
+			"deviceId": deviceID,
+			"items":    history,
+			"latest":   latest,
+		})
+	})
 
 	// api请求处理 (⚠️ 调试端点，仅用于开发测试。生产环境应通过后端 POST → Redis 推送)
 	r.GET("/api", func(c *gin.Context) {

@@ -249,6 +249,7 @@ ul {
     .card {
         width: 98%;
         margin: 16px auto;
+        box-sizing: border-box;
     }
 
     .card-title {
@@ -389,4 +390,394 @@ ul {
 .ai-time {
     font-size: 12px !important;
     color: #c0c4cc !important;
+}
+
+/* AI 运行状态卡：值班人员先看状态，再看分数与阈值关系。 */
+.ai-panel {
+    --ai-ink: #16232d;
+    --ai-muted: #647480;
+    --ai-line: #dce4e8;
+    --ai-normal: #168a5b;
+    --ai-warning: #c47a0a;
+    --ai-alarm: #c43d32;
+    margin: 18px 14px 14px;
+    border: 1px solid var(--ai-line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 12px 32px rgba(31, 50, 61, 0.08);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+/* AI 是整台电梯的综合判断，应横跨运行信息和规则告警两栏。 */
+.card > .ai-panel {
+    width: auto;
+    margin: 18px 10px 10px;
+}
+
+.ai-panel-abnormal {
+    border-color: rgba(196, 61, 50, 0.65);
+    box-shadow: 0 8px 26px rgba(196, 61, 50, 0.13);
+}
+
+.ai-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #f4f8f8 0%, #eef4f3 100%);
+    border-bottom: 1px solid var(--ai-line);
+}
+
+.ai-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ai-heading strong,
+.ai-heading small {
+    display: block;
+}
+
+.ai-heading strong {
+    color: var(--ai-ink);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.ai-heading small {
+    margin-top: 2px;
+    color: var(--ai-muted);
+    font-size: 11px;
+}
+
+.ai-chip {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 8px;
+    color: #ffffff;
+    background: #2e6f79;
+    font-family: Bahnschrift, "Microsoft YaHei", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.ai-state {
+    flex: 0 0 auto;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.ai-state-waiting,
+.ai-state-collecting {
+    color: #55707c;
+    background: #edf3f5;
+    border-color: #d5e1e5;
+}
+
+.ai-state-normal {
+    color: #116e49;
+    background: #e7f4ee;
+    border-color: #b8dfce;
+}
+
+.ai-state-abnormal {
+    color: #a22f27;
+    background: #fbeceb;
+    border-color: #efc2be;
+}
+
+.ai-state-unavailable {
+    color: #98610a;
+    background: #fff4df;
+    border-color: #edd3a4;
+}
+
+.ai-panel-content {
+    padding: 18px 20px 15px;
+}
+
+.ai-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--ai-line);
+    border-radius: 10px;
+    background: var(--ai-line);
+}
+
+.ai-metric {
+    min-width: 0;
+    padding: 13px 16px;
+    background: #ffffff;
+}
+
+.ai-metric span,
+.ai-metric strong {
+    display: block;
+}
+
+.ai-metric span {
+    margin-bottom: 5px;
+    color: var(--ai-muted);
+    font-size: 11px;
+}
+
+.ai-metric strong {
+    color: var(--ai-ink);
+    font-family: Bahnschrift, "Microsoft YaHei", sans-serif;
+    font-size: 18px;
+    line-height: 1.1;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.ai-metric-primary strong {
+    color: #2e6f79;
+    font-size: 25px;
+}
+
+.ai-panel-abnormal .ai-metric-primary strong,
+.ai-negative {
+    color: var(--ai-alarm) !important;
+}
+
+.ai-time-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 15px !important;
+}
+
+.ai-threshold-block {
+    margin-top: 14px;
+}
+
+.ai-threshold-labels,
+.ai-trend-head,
+.ai-panel-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    color: var(--ai-muted);
+    font-size: 10px;
+}
+
+.ai-threshold-labels span:nth-child(2) {
+    color: #40525d;
+    font-weight: 600;
+}
+
+.ai-threshold-rail {
+    position: relative;
+    height: 7px;
+    margin-top: 7px;
+    overflow: visible;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #e4f1ec 0%, #f5ead2 72%, #f5dcda 100%);
+}
+
+.ai-threshold-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    border-radius: inherit;
+    background: #2e6f79;
+    transition: width 240ms ease;
+}
+
+.ai-panel-abnormal .ai-threshold-fill {
+    background: var(--ai-alarm);
+}
+
+.ai-threshold-mark {
+    position: absolute;
+    top: -4px;
+    width: 2px;
+    height: 15px;
+    border-radius: 2px;
+    background: var(--ai-warning);
+    box-shadow: 0 0 0 2px #ffffff;
+    transform: translateX(-1px);
+}
+
+.ai-trend-head {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #edf1f3;
+}
+
+.ai-trend-head > div {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+}
+
+.ai-trend-head strong {
+    color: #40525d;
+    font-weight: 600;
+}
+
+.ai-history-note {
+    color: #91a4ad;
+    font-size: 9px;
+    font-weight: 400;
+}
+
+.ai-chart-legend {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    min-height: 22px;
+    color: #71828c;
+    font-size: 9px;
+}
+
+.ai-chart-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ai-legend-line {
+    display: inline-block;
+    width: 16px;
+    height: 0;
+    border-top: 2px solid;
+}
+
+.ai-legend-score { border-color: #2e7d86; }
+.ai-legend-average { border-color: #8ba8af; border-top-width: 1px; }
+.ai-legend-threshold { border-color: #c88112; border-top-style: dashed; }
+
+.ai-chart-wrap {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e4eaed;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.ai-trend {
+    display: block;
+    width: 100%;
+    height: 238px;
+    cursor: crosshair;
+}
+
+.ai-chart-tooltip {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 142px;
+    padding: 7px 9px;
+    border: 1px solid #cfdadd;
+    border-radius: 7px;
+    color: #41535e;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 6px 18px rgba(31, 50, 61, 0.14);
+    pointer-events: none;
+    white-space: nowrap;
+    font-family: Bahnschrift, "Microsoft YaHei", sans-serif;
+    font-size: 10px;
+}
+
+.ai-chart-tooltip[hidden] {
+    display: none;
+}
+
+.ai-chart-tooltip strong {
+    color: #2e6f79;
+    font-size: 11px;
+}
+
+.ai-chart-tooltip small {
+    color: #9a680f;
+    font-size: 9px;
+}
+
+.ai-panel-foot {
+    justify-content: flex-start;
+    padding-top: 10px;
+}
+
+.ai-panel-foot time {
+    margin-left: auto;
+    color: #91a4ad;
+    font-family: Bahnschrift, "Microsoft YaHei", sans-serif;
+    font-variant-numeric: tabular-nums;
+}
+
+.ai-foot-dot {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: #91a4ad;
+}
+
+.ai-panel-normal .ai-foot-dot { background: var(--ai-normal); }
+.ai-panel-abnormal .ai-foot-dot { background: var(--ai-alarm); }
+.ai-panel-unavailable .ai-foot-dot { background: var(--ai-warning); }
+
+@media (max-width: 900px) {
+    .ai-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ai-trend {
+        height: 210px;
+    }
+}
+
+@media (max-width: 768px) {
+    .ai-panel {
+        margin: 14px 10px 10px;
+    }
+
+    .card > .ai-panel {
+        margin-top: 14px;
+    }
+
+    .ai-panel-head,
+    .ai-panel-content {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .ai-chart-legend {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+    }
+
+    .ai-trend {
+        height: 190px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-panel,
+    .ai-threshold-fill {
+        transition: none;
+    }
+
+    .ai-abnormal {
+        animation: none;
+    }
 }
