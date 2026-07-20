@@ -262,6 +262,7 @@ func main() {
 
 	//设置静态资源目录
 	r.Static("/static", "./static")
+	r.Static("/html", "./html")
 
 	// AI 最近推理历史：同源接口避免跨域，页面刷新后可恢复最近 60 个得分点。
 	r.GET("/api/ai/history/:deviceId", func(c *gin.Context) {
