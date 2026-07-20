@@ -187,6 +187,7 @@ public class TimeSeriesBuffer {
      *   "00" 平层 → 0
      *   "01" 上行 → 1
      *   "02" 下行 → 2
+     *   "03" 硬件故障 → 3
      * </pre>
      */
     public static double parseDirection(String direction) {
