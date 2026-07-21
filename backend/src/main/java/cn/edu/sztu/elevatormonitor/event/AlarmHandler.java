@@ -137,9 +137,12 @@ public class AlarmHandler {
      */
     private void updateStatusAlarm(String deviceId, List<AlarmEvent> alarmEvents) {
         try {
-            // 拼接所有告警规则名（逗号分隔），前端据此点亮对应告警灯
+            // 只统计 FIRED 事件，CLEARED 事件的 ruleName 不应写入 Alarm 字段
             StringBuilder sb = new StringBuilder();
             for (AlarmEvent ae : alarmEvents) {
+                if (!AlarmEvent.TYPE_FIRED.equals(ae.getEventType())) {
+                    continue;
+                }
                 if (sb.length() > 0) sb.append(",");
                 sb.append(ae.getRuleName());
             }
