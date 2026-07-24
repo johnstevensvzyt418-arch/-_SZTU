@@ -9,11 +9,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * 规则: 开门运行。
- * 电梯在运行过程中（方向非平层00）轿厢门处于开门到位状态(01)且速度>0.01m/s时触发告警，
- * 这是严重的安全隐患。
+ * 电梯在运行过程中（方向非平层00）轿厢门处于开门到位状态(01)时触发告警。
+ * 速度阈值 0.3m/s 用于排除到站停车时方向未及时更新导致的误报。
  */
 @Component
 public class DoorOpenRunningRule implements AlarmRule {
+
+    /** 最低运行速度阈值(m/s)，低于此值视为已停止，避免残值误报 */
+    private static final double MIN_SPEED_MPS = 0.3;
 
     @Override
     public String ruleName() { return "DOOR_OPEN_RUNNING"; }
@@ -40,9 +43,9 @@ public class DoorOpenRunningRule implements AlarmRule {
             return null;
         }
 
-        // 速度阈值: 必须>0.01m/s（排除极低速停车时的误报）
+        // 速度阈值: 必须 >0.3m/s（排除到站减速残值和停车误报）
         // speed=-1 表示速度未计算，此时仅凭方向+门状态判断
-        if (speed >= 0 && speed <= 0.01) {
+        if (speed >= 0 && speed <= MIN_SPEED_MPS) {
             return null;
         }
 
