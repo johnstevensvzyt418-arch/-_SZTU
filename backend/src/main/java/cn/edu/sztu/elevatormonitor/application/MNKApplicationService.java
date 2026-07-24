@@ -106,11 +106,11 @@ public class MNKApplicationService {
         String targetFloor = frame.getTargetFloor();
         String doorStatus = frame.getDoorStatus();
 
-        // 3a. 跨请求速度计算
+        // 3a. 跨请求速度计算（传入方向，平层时自动归零）
         double speed = frame.getSpeed();
         if (speed < 0) {
             try {
-                speed = speedTrackingService.calculateAndUpdateSpeed(deviceId, currentFloor, reportTime);
+                speed = speedTrackingService.calculateAndUpdateSpeed(deviceId, currentFloor, reportTime, frame.getDirection());
             } catch (Exception e) {
                 LOGGER.warn("[MNK-App] 速度计算失败(Redis不可用?), deviceId={}, 使用默认值0", deviceId);
                 speed = 0.0;

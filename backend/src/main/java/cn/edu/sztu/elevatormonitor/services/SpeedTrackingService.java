@@ -56,9 +56,10 @@ public class SpeedTrackingService {
      * @param deviceId     设备ID
      * @param currentFloor 当前楼层（如 "01", "02"）
      * @param reportTime   上报时间字符串（HH:mm:ss 格式）
-     * @return 计算出的瞬时速度（m/s），首次上报返回 0.0
+     * @param direction    运行方向（"00"=平层/停止, "01"=上行, "02"=下行）
+     * @return 计算出的瞬时速度（m/s），平层时返回 0.0，首次上报返回 0.0
      */
-    public double calculateAndUpdateSpeed(String deviceId, String currentFloor, String reportTime) {
+    public double calculateAndUpdateSpeed(String deviceId, String currentFloor, String reportTime, String direction) {
         if (deviceId == null || currentFloor == null || reportTime == null) {
             return 0.0;
         }
@@ -113,6 +114,13 @@ public class SpeedTrackingService {
             stringRedisTemplate.opsForHash().put(hashKey, "lastFloor", currentFloor);
         }
         stringRedisTemplate.opsForHash().put(hashKey, "lastTimeEpoch", String.valueOf(currentEpoch));
+
+        // 平层（方向=00）→ 速度归零，重置缓存避免残留
+        if ("00".equals(direction)) {
+            stringRedisTemplate.opsForHash().put(hashKey, "lastSpeed", "0.0");
+            LOGGER.debug("[SpeedTrack] 设备 {} 平层停止, 速度归零", deviceId);
+            return 0.0;
+        }
 
         // 同一秒内或楼层未变化 → 返回上次缓存的速度，保持前端速度显示不归零
         if (timeDiffSec == 0 || floorDiff == 0) {
